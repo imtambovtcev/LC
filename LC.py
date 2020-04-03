@@ -62,7 +62,6 @@ t = time()
 LCD = lc.LcMinimiser(GD)
 LCD.simple_minimize()
 LCD.save()
-LCD.save_dependence()
 maxang=LCD.get_maxtheta_dependence()
 eps=LCD.get_eps_dependence()
 

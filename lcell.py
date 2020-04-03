@@ -175,6 +175,9 @@ class LcDependence():
     def __init__(self,Hlist,size, K1, K2, K3,directory='./',state_name='LC',state=None, eps_par=0., eps_perp=0., chi=0., E=0., anc=np.array([0.,0.]),  N=100,
                  tp0=np.array([[0.], [0.]])):
         self.Hlist=np.array(Hlist)
+        self.K1=K1
+        self.K2=K2
+        self.K3=K3
         if state:
             assert len(Hlist)==len(state)
             self.states=[LcCell(size=size,K1=K1,K2=K2,K3=K3,state=state[i],eps_par=eps_par,eps_perp=eps_perp,chi=chi,E=E,H=Hlist[i],anc=anc,N=N,tp0=tp0) for i in range(len(Hlist))]
@@ -223,11 +226,10 @@ class LcDependence():
         return np.array([lc.get_max_theta() for lc in self.states])
     def get_maxphi_dependence(self):
         return np.array([lc.get_max_phi() for lc in self.states])
-    def save_dependence(self):
-        np.savez(self.directory+self.state_name+'.npz',H=self.Hlist,eps=self.eps)
     def save(self):
         for idx,lc in enumerate(self.states):
-            lc.save(self.directory+self.state_name + '_{:.5f}.pkl'.format(self.Hlist[idx]))
+            lc.save(self.directory+self.state_name + '_{:.5f}_{:.5f}_{:.5f}_{:.5f}.pkl'.format(self.K1,self.K2,self.K3,self.Hlist[idx]))
+            np.savez(self.directory + self.state_name + '_{:.5f}_{:.5f}_{:.5f}.npz'.format(self.K1,self.K2,self.K3), H=self.Hlist, eps=self.eps,K1=self.K1,K2=self.K2,K3=self.K3)
 
 class LcMinimiser(LcDependence):
     def __init__(self,system):
