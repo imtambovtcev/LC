@@ -21,9 +21,9 @@ GD={
     'U':0.000333564,
     'N':40,
     'anc':500*40*np.array([1.,0.1]),
-    'directory':'GD/',
+    'directory':'/home/ivan/LC/GD/',
     'state_name':'LC',
-    'data':'Gd 17-17_exp.dat'
+    'data':'/home/ivan/LC/Gd 17-17_exp.dat'
 }
 ER={
     'size':[1,1,0.5*0.025],
@@ -36,9 +36,9 @@ ER={
     'U':0.000333564,
     'N':40,
     'anc':500*40*np.array([1.,0.1]),
-    'directory':'ER/',
+    'directory':'/home/ivan/LC/ER/',
     'state_name':'LC',
-    'data':'Er_17-17_exp.csv'
+    'data':'/home/ivan/LC/Er_17-17_exp.csv'
 }
 CB={
     'size':[1,1,0.5*0.025],
@@ -51,9 +51,9 @@ CB={
     'U':0.000333564,
     'N':40,
     'anc':500*40*np.array([1.,0.1]),
-    'directory':'5CB/',
+    'directory':'/home/ivan/LC/5CB/',
     'state_name':'LC',
-    'data':'5CB_new_perp.dat'
+    'data':'/home/ivan/LC/5CB_new_perp.dat'
 }
 
 
