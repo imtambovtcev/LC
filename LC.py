@@ -59,7 +59,7 @@ CB={
 
 t = time()
 
-LCD = lc.LcMinimiser(CB)
+LCD = lc.LcMinimiser(GD)
 LCD.simple_minimize()
 LCD.save()
 LCD.save_dependence()
@@ -72,6 +72,7 @@ LCD.plot_maxangle(show=True)
 LCD.plot_eps(show=True)
 #LCD.plot(show=True)
 LCD.plot_exp(show=True)
+print(f'{LCD.diff() = }')
 
 
 

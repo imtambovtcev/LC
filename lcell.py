@@ -274,8 +274,8 @@ class LcMinimiser(LcDependence):
         return np.array(H),np.array([eps_exp_par,eps_exp_perp]),np.array([[math.acos(math.sqrt((eps_exp_perp[0] - eps_perp) / (eps_par-eps_perp)))],[0.0]])
 
     def plot_exp(self,title=None,show=False,save=None):
-        plt.plot(self.full_Hlist, self.exp_eps[0],'b',label=r'$\varepsilon_{\parallel}$')
-        plt.plot(self.full_Hlist, self.exp_eps[1],'r',label=r'$\varepsilon_{\perp}$')
+        plt.plot(self.full_Hlist, self.exp_eps[0],'bx',label=r'$\varepsilon_{\parallel}$')
+        plt.plot(self.full_Hlist, self.exp_eps[1],'rx',label=r'$\varepsilon_{\perp}$')
         plt.plot(self.Hlist,self.get_eps_dependence(),'.')
         plt.legend()
         plt.xlabel('H')
@@ -284,3 +284,6 @@ class LcMinimiser(LcDependence):
         if save:  plt.savefig(save)
         if show:  plt.show()
         plt.close('all')
+
+    def diff(self):
+        return np.linalg.norm(self.exp_eps[1][np.invert(np.isnan(self.exp_eps[1]))]-self.get_eps_dependence())
