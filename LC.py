@@ -57,15 +57,17 @@ CB={
 }
 
 
-t = time()
 
 LCD = lc.LcMinimiser(GD)
+t = time()
 LCD.simple_minimize()
+#LCD.complex_minimize(node=4)
+print('t = {}'.format(time()-t))
 LCD.save()
 maxang=LCD.get_maxtheta_dependence()
 eps=LCD.get_eps_dependence()
 
-print('t = {}'.format(time()-t))
+
 
 LCD.plot_maxangle(show=True)
 LCD.plot_eps(show=True)

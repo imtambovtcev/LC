@@ -168,8 +168,7 @@ def LcCell_from_file(filename):
 def call(lc):
     return lc.minimize_state()
 
-def f(x):
-    return x*x
+
 
 class LcDependence():
     def __init__(self,Hlist,size, K1, K2, K3,directory='./',state_name='LC',state=None, eps_par=0., eps_perp=0., chi=0., E=0., anc=np.array([0.,0.]),  N=100,
@@ -192,10 +191,12 @@ class LcDependence():
     def simple_minimize(self):
         self.eps=np.array([lc.minimize_state() for lc in self.states])
 
-    def complex_minimize(self):
-        with Pool(5) as p:
-            self.eps = np.array(p.map(f,list(range(len(self.states)))))
-            print(self.eps)
+    def cm(self,x):
+        return x.minimize_state()
+    def complex_minimize(self,node=4): #multiprocessing. Linux only
+        with Pool(node) as p:
+            self.eps = np.array(p.map(self.cm,self.states))
+            #print(self.eps)
 
     def get_eps_dependence(self):
         return self.eps
