@@ -60,8 +60,8 @@ CB={
 
 LCD = lc.LcMinimiser(GD)
 t = time()
-LCD.simple_minimize()
-#LCD.complex_minimize(node=4)
+#LCD.simple_minimize()
+LCD.complex_minimize(node=4)
 print('t = {}'.format(time()-t))
 LCD.save()
 maxang=LCD.get_maxtheta_dependence()
@@ -75,6 +75,9 @@ LCD.plot_eps(show=True)
 LCD.plot_exp(show=True)
 print(f'{LCD.diff() = }')
 
+
+LC=lc.LcDependence(1,0.5,2,load=True,directory='/home/ivan/LC/GD/',state_name='LC')
+LC.plot()
 
 
 '''

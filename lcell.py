@@ -165,28 +165,37 @@ def LcCell_from_file(filename):
     with open(filename, 'rb') as input:
         return pickle.load(input)
 
-def call(lc):
-    return lc.minimize_state()
-
-
 
 class LcDependence():
-    def __init__(self,Hlist,size, K1, K2, K3,directory='./',state_name='LC',state=None, eps_par=0., eps_perp=0., chi=0., E=0., anc=np.array([0.,0.]),  N=100,
+    def __init__(self, K1, K2, K3,load=False,directory='./',state_name='LC',Hlist=None,size=None,state=None, eps_par=0., eps_perp=0., chi=0., E=0., anc=np.array([0.,0.]),  N=100,
                  tp0=np.array([[0.], [0.]])):
-        self.Hlist=np.array(Hlist)
+
         self.K1=K1
         self.K2=K2
         self.K3=K3
-        if state:
-            assert len(Hlist)==len(state)
-            self.states=[LcCell(size=size,K1=K1,K2=K2,K3=K3,state=state[i],eps_par=eps_par,eps_perp=eps_perp,chi=chi,E=E,H=Hlist[i],anc=anc,N=N,tp0=tp0) for i in range(len(Hlist))]
-        else:
-            self.states=[LcCell(size=size,K1=K1,K2=K2,K3=K3,eps_par=eps_par,eps_perp=eps_perp,chi=chi,E=E,H=h,anc=anc,N=N,tp0=tp0) for h in Hlist]
-        self.eps=np.array([lc.get_epsilon() for lc in self.states])
+
         if not os.path.exists(directory):
             os.makedirs(directory)
         self.directory=directory
         self.state_name=state_name
+        load_status = False
+        if load:
+            try:
+                if self.load()==1:
+                    load_status = True
+                else:
+                    print('uncomplete load '+self.directory + self.state_name + '_{:.5f}_{:.5f}_{:.5f}.npz'.format(self.K1,self.K2,self.K3))
+            except:
+                print('load failure')
+        if not load_status:
+            self.Hlist = np.array(Hlist)
+            if state:
+                assert len(self.Hlist)==len(state)
+                self.states=[LcCell(size=size,K1=K1,K2=K2,K3=K3,state=state[i],eps_par=eps_par,eps_perp=eps_perp,chi=chi,E=E,H=Hlist[i],anc=anc,N=N,tp0=tp0) for i in range(len(Hlist))]
+            else:
+                self.states=[LcCell(size=size,K1=K1,K2=K2,K3=K3,eps_par=eps_par,eps_perp=eps_perp,chi=chi,E=E,H=h,anc=anc,N=N,tp0=tp0) for h in Hlist]
+        self.eps=np.array([lc.get_epsilon() for lc in self.states])
+
 
     def simple_minimize(self):
         self.eps=np.array([lc.minimize_state() for lc in self.states])
@@ -230,7 +239,22 @@ class LcDependence():
     def save(self):
         for idx,lc in enumerate(self.states):
             lc.save(self.directory+self.state_name + '_{:.5f}_{:.5f}_{:.5f}_{:.5f}.pkl'.format(self.K1,self.K2,self.K3,self.Hlist[idx]))
-            np.savez(self.directory + self.state_name + '_{:.5f}_{:.5f}_{:.5f}.npz'.format(self.K1,self.K2,self.K3), H=self.Hlist, eps=self.eps,K1=self.K1,K2=self.K2,K3=self.K3)
+        np.savez(self.directory + self.state_name + '_{:.5f}_{:.5f}_{:.5f}.npz'.format(self.K1,self.K2,self.K3),
+                    H=self.Hlist, eps=self.eps,K1=self.K1,K2=self.K2,K3=self.K3)
+
+    def load(self):
+        file = np.load(self.directory + self.state_name + '_{:.5f}_{:.5f}_{:.5f}.npz'.format(self.K1,self.K2,self.K3))
+        self.Hlist=file['H']
+        self.eps=file['eps']
+        self.K1 = file['K1']
+        self.K2 = file['K2']
+        self.K3 = file['K3']
+
+        try:
+            self.states=[LcCell_from_file(self.directory+self.state_name + '_{:.5f}_{:.5f}_{:.5f}_{:.5f}.pkl'.format(self.K1,self.K2,self.K3,h)) for h in self.Hlist]
+        except:
+            return -1
+        return 1
 
 class LcMinimiser(LcDependence):
     def __init__(self,system):
