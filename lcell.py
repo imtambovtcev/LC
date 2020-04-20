@@ -97,9 +97,11 @@ class LcCell(Director):
         return np.linalg.norm(self.anc * ((self.tp[:, 0] - self.tp0) ** 2 + (self.tp[:, -1] - self.tp0) ** 2))
 
     def energy(self):
-        #print('E = ',self.k_energy_density().sum() + self.H_energy_density().sum() + self.boundary_energy(),'Ek = ',self.k_energy_density().sum(),'Ef = ', self.H_energy_density().sum(),'Eb = ',self.boundary_energy())
+        #print('E = ',self.k_energy_density().sum() + self.H_energy_density().sum() + self.boundary_energy(),
+        # 'Ek = ',self.k_energy_density().sum(),'Ef = ', self.H_energy_density().sum(),'Eb = ',self.boundary_energy())
         return self.k_energy_density().sum() + self.H_energy_density().sum()+ self.E_energy_density().sum() + self.boundary_energy()
-        #return ((self.K1*np.sin(self.tp[0])**2 + self.K3*np.cos(self.tp[0])**2)*(self.dtp[0]/self.N)**2 - self.H*np.cos(self.tp[0])**2).sum()-self.anc*(np.cos(self.tp[0,0])+np.cos(self.tp[0,-1]))
+        #return ((self.K1*np.sin(self.tp[0])**2 + self.K3*np.cos(self.tp[0])**2)*(self.dtp[0]/self.N)**2
+        # - self.H*np.cos(self.tp[0])**2).sum()-self.anc*(np.cos(self.tp[0,0])+np.cos(self.tp[0,-1]))
 
     def energy_density_plot(self,title=None,show=False,save=None):
         fig, ax1 = plt.subplots()
@@ -167,7 +169,8 @@ def LcCell_from_file(filename):
 
 
 class LcDependence():
-    def __init__(self, K1, K2, K3,load=False,directory='./',state_name='LC',Hlist=None,size=None,state=None, eps_par=0., eps_perp=0., chi=0., E=0., anc=np.array([0.,0.]),  N=100,
+    def __init__(self, K1, K2, K3,load=False,directory='./',state_name='LC',Hlist=None,size=None,state=None,
+                 eps_par=0., eps_perp=0., chi=0., E=0., anc=np.array([0.,0.]),  N=100,
                  tp0=np.array([[0.], [0.]])):
 
         self.K1=K1
@@ -191,9 +194,13 @@ class LcDependence():
             self.Hlist = np.array(Hlist)
             if state:
                 assert len(self.Hlist)==len(state)
-                self.states=[LcCell(size=size,K1=K1,K2=K2,K3=K3,state=state[i],eps_par=eps_par,eps_perp=eps_perp,chi=chi,E=E,H=Hlist[i],anc=anc,N=N,tp0=tp0) for i in range(len(Hlist))]
+                self.states=[LcCell(size=size,K1=K1,K2=K2,K3=K3,
+                                    state=state[i],eps_par=eps_par,eps_perp=eps_perp,chi=chi,E=E,
+                                    H=Hlist[i],anc=anc,N=N,tp0=tp0) for i in range(len(Hlist))]
             else:
-                self.states=[LcCell(size=size,K1=K1,K2=K2,K3=K3,eps_par=eps_par,eps_perp=eps_perp,chi=chi,E=E,H=h,anc=anc,N=N,tp0=tp0) for h in Hlist]
+                self.states=[LcCell(size=size,K1=K1,K2=K2,K3=K3,
+                                    eps_par=eps_par,eps_perp=eps_perp,chi=chi,E=E,
+                                    H=h,anc=anc,N=N,tp0=tp0) for h in Hlist]
         self.eps=np.array([lc.get_epsilon() for lc in self.states])
 
 
@@ -251,17 +258,17 @@ class LcDependence():
         self.K3 = file['K3']
 
         try:
-            self.states=[LcCell_from_file(self.directory+self.state_name + '_{:.5f}_{:.5f}_{:.5f}_{:.5f}.pkl'.format(self.K1,self.K2,self.K3,h)) for h in self.Hlist]
+            self.states=[LcCell_from_file(self.directory+self.state_name +
+                                          '_{:.5f}_{:.5f}_{:.5f}_{:.5f}.pkl'.format(self.K1,self.K2,self.K3,h)) for h in self.Hlist]
         except:
             return -1
         return 1
 
 class LcMinimiser(LcDependence):
     def __init__(self,system):
-        self.full_Hlist,self.exp_eps,tp0=self.load_file(system['data'],system['eps_par'],system['eps_perp'])
+        self.exp_eps_perp,self.exp_eps_par,tp0=self.load_file(system['data'],system['eps_par'],system['eps_perp'])
         if True:
-            Hlist=self.full_Hlist[np.invert(np.isnan(self.exp_eps[0]))]
-            exp_eps = self.exp_eps[1][np.invert(np.isnan(self.exp_eps[1]))]
+            exp_eps = self.exp_eps_perp
         if 'directory' in system:
             directory=system['directory']
         else: directory='./'
@@ -273,37 +280,40 @@ class LcMinimiser(LcDependence):
         else: state=None
         if 'N' in system: N = int(system['N'])
         else: N = 100
-        super().__init__(Hlist=Hlist, K1=float(system['K1']), K2=float(system['K2']), K3=float(system['K3']),
-                         eps_par=float(system['eps_par']), eps_perp=float(system['eps_perp']), chi=float(system['chi']),E=float(system['U'])/system['size'][2],
-                         anc=system['anc'], tp0=tp0, N=N,
+        super().__init__(Hlist=exp_eps[:,0], K1=float(system['K1']), K2=float(system['K2']), K3=float(system['K3']),
+                         eps_par=float(system['eps_par']), eps_perp=float(system['eps_perp']), chi=float(system['chi']),
+                         E=float(system['U'])/system['size'][2],anc=system['anc'], tp0=tp0, N=N,
                          directory=directory, state_name=state_name,size=size,state=state)
 
     def load_file(self,filename,eps_par,eps_perp):
         f = open(filename, 'r')
         lines = f.readlines()
-        H = []
         eps_exp_par = []
         eps_exp_perp = []
         for x in lines:
             try:
                 x=x.split('\t')
-                H.append(float(x[0]))
                 try:
-                    eps_exp_par.append(float(x[1]))
+                    eps_exp_par.append([float(x[0]),float(x[1])])
                 except:
-                    eps_exp_par.append(np.nan)
+                    eps_exp_par.append([np.nan,np.nan])
                 try:
-                    eps_exp_perp.append(float(x[2]))
+                    eps_exp_perp.append([float(x[0]),float(x[2])])
                 except:
-                    eps_exp_perp.append(np.nan)
-            except: ()
+                    eps_exp_perp.append([np.nan,np.nan])
+            except:
+                print('broken file')
         f.close()
-        return np.array(H),np.array([eps_exp_par,eps_exp_perp]),np.array([[math.acos(math.sqrt((eps_exp_perp[0] - eps_perp) / (eps_par-eps_perp)))],[0.0]])
+        eps_exp_perp = np.array(eps_exp_perp)
+        eps_exp_par = np.array(eps_exp_par)
+        eps_exp_perp = eps_exp_perp[np.invert(np.isnan(eps_exp_perp[:,0]))]
+        eps_exp_par = eps_exp_par[np.invert(np.isnan(eps_exp_par[:,0]))]
+        return eps_exp_perp,eps_exp_par,np.array([[math.acos(math.sqrt((eps_exp_perp[0,1] - eps_perp) / (eps_par-eps_perp)))],[0.0]])
 
     def plot_exp(self,title=None,show=False,save=None):
-        plt.plot(self.full_Hlist, self.exp_eps[0],'bx',label=r'$\varepsilon_{\parallel}$')
-        plt.plot(self.full_Hlist, self.exp_eps[1],'rx',label=r'$\varepsilon_{\perp}$')
-        plt.plot(self.Hlist,self.get_eps_dependence(),'.')
+        plt.plot(self.exp_eps_par[:,0], self.exp_eps_par[:,1],'bx',label=r'$\varepsilon_{\parallel}$')
+        plt.plot(self.exp_eps_perp[:,0], self.exp_eps_perp[:,1],'rx',label=r'$\varepsilon_{\perp}$')
+        plt.plot(self.exp_eps_perp[:,0],self.get_eps_dependence(),'.')
         plt.legend()
         plt.xlabel('H')
         plt.ylabel(r'$\varepsilon$')
@@ -313,4 +323,4 @@ class LcMinimiser(LcDependence):
         plt.close('all')
 
     def diff(self):
-        return np.linalg.norm(self.exp_eps[1][np.invert(np.isnan(self.exp_eps[1]))]-self.get_eps_dependence())
+        return np.linalg.norm(self.exp_eps_perp[:,1]-self.get_eps_dependence())

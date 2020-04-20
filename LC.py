@@ -18,7 +18,7 @@ GD={
     'eps_par':3.85,
     'eps_perp':6.35,
     'chi':0.009894/1812,
-    'U':0.000333564,
+    'U':0.1/300, #V*300 = 1 sgsV
     'N':40,
     'anc':500*40*np.array([1.,0.1]),
     'directory':'/home/ivan/LC/GD/',
@@ -58,7 +58,7 @@ CB={
 
 
 
-LCD = lc.LcMinimiser(GD)
+LCD = lc.LcMinimiser(CB)
 t = time()
 #LCD.simple_minimize()
 LCD.complex_minimize(node=4)
@@ -76,14 +76,5 @@ LCD.plot_exp(show=True)
 print(f'{LCD.diff() = }')
 
 
-LC=lc.LcDependence(1,0.5,2,load=True,directory='/home/ivan/LC/GD/',state_name='LC')
+LC=lc.LcDependence(1,0.5,2,load=True,directory=CB['directory'],state_name='LC')
 LC.plot()
-
-
-'''
-filelist=[file for file in os.listdir(directory) if file[-4:]=='.pkl']
-filelist=sorted(filelist,key=lambda x: float(x.split('_')[1][:-4]))
-for file in filelist:
-    obj = lc.LcCell_from_file(filename=directory+file)
-    print(obj)
-'''
