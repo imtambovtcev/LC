@@ -11,7 +11,8 @@ class Director:
     def __init__(self, tp=None, N=100, tp0=np.array([[0.], [0.]])):
         tp0 = np.array(tp0).reshape(2, 1)
         if tp is None:
-            self.tp = np.array([np.sin(np.linspace(0., np.pi, N)) * (0.5 * np.pi - tp0[0]) + tp0[0],
+            print('initial')
+            self.tp = 0.8*np.array([np.sin(np.linspace(0., np.pi, N)) * (0.5 * np.pi - tp0[0]) + tp0[0],
                                 np.sin(np.linspace(0., np.pi, N)) * (0.5 * np.pi - tp0[1]) + tp0[1]])
         else:
             self.tp = np.array(tp).reshape(2, -1)
@@ -37,12 +38,12 @@ class Director:
 
     def plot(self,title=None,show=False,save=None):
         fig, ax1 = plt.subplots()
-        if title is not None:
+        if title:
             plt.title(title)
         ax1.set_xlabel('z')
         ax1.set_ylabel('ang')
-        ax1.plot(np.linspace(0., 1., self.N), self.tp[0], 'r', label='theta')
-        ax1.plot(np.linspace(0., 1., self.N), self.tp[1], 'b', label='phi')
+        ax1.plot(np.linspace(0., 1., self.N), self.tp[0]*180/np.pi, 'r', label='theta')
+        ax1.plot(np.linspace(0., 1., self.N), self.tp[1]*180/np.pi, 'b', label='phi')
         fig.tight_layout()
         plt.legend()
         ax2 = ax1.twinx()
@@ -50,7 +51,7 @@ class Director:
         ax2.plot(np.linspace(0., 1., self.N), self.dtp[0], 'r--', label='dtheta')
         ax2.plot(np.linspace(0., 1., self.N), self.dtp[1], 'b--', label='dphi')
         plt.tight_layout()
-        if save is not None:
+        if save:
             plt.savefig(save)
         if show:
             plt.show()
@@ -127,7 +128,7 @@ class LcCell(Director):
     def minimize_state(self):
         minimum = scipy.optimize.minimize(self.weak_restate, self.tp, method='CG', options={'gtol': 1e0, 'disp': True})
         self.weak_restate(minimum.x)
-        return self.get_epsilon()
+        return self
 
     def get_epsilon(self):
         return self.N/((1./(self.eps_perp+(self.eps_par-self.eps_perp)*(np.cos(self.tp[0])**2))).sum())
@@ -138,8 +139,8 @@ class LcCell(Director):
 
 
     def __repr__(self):
-        self.plot(title='H = {:.5f} Energy = {:.5f}'.format(self.H,self.energy()),show=True)
-        self.energy_density_plot('H = {:.5f}, Energy = {:.5f}'.format(self.H, self.energy()),show=True)
+        self.plot(title='H = {:.10f} Energy = {:.10f}'.format(self.H,self.energy()),show=True)
+        self.energy_density_plot('H = {:.10f}, Energy = {:.10f}'.format(self.H, self.energy()),show=True)
         return 'LC_cell\n' \
                'K1={}\n' \
                'K2={}\n' \
@@ -187,7 +188,7 @@ class LcDependence():
                 if self.load()==1:
                     load_status = True
                 else:
-                    print('uncomplete load '+self.directory + self.state_name + '_{:.5f}_{:.5f}_{:.5f}.npz'.format(self.K1,self.K2,self.K3))
+                    print('uncomplete load '+self.directory + self.state_name + '_{:.10f}_{:.10f}_{:.10f}.npz'.format(self.K1,self.K2,self.K3))
             except:
                 print('load failure')
         if not load_status:
@@ -205,22 +206,26 @@ class LcDependence():
 
 
     def simple_minimize(self):
-        self.eps=np.array([lc.minimize_state() for lc in self.states])
+        self.states=[lc.minimize_state() for lc in self.states]
+        self.eps=np.array([lc.get_epsilon() for lc in self.states])
 
     def cm(self,x):
         return x.minimize_state()
     def complex_minimize(self,node=4): #multiprocessing. Linux only
         with Pool(node) as p:
-            self.eps = np.array(p.map(self.cm,self.states))
-            #print(self.eps)
+            self.states = p.map(self.cm,self.states)
+        self.eps = np.array([lc.get_epsilon() for lc in self.states])
 
     def get_eps_dependence(self):
         return self.eps
 
-    def plot(self,title=None,show=False,save=None):
-        for lc in self.states:
+    def plot(self,title='H = ',show=False,save=None):
+        [print(lc) for lc in self.states]
+    '''        for idx,lc in enumerate(self.states):
+            if title == 'H = ':
+                title='H = {:.10f}'.format(self.Hlist[idx])
             lc.plot(title=title,show=show,save=save)
-
+    '''
     def plot_eps(self,title=None,show=False,save=None):
         plt.plot(self.Hlist, self.eps)
         plt.xlabel('H')
@@ -231,26 +236,27 @@ class LcDependence():
         plt.close('all')
 
     def plot_maxangle(self,title=None,show=False,save=None):
-        plt.plot(self.Hlist, self.get_maxtheta_dependence())
+        plt.plot(self.Hlist, self.get_maxangle_dependence()[:,0],'r',label=r'$\theta$')
+        plt.plot(self.Hlist, self.get_maxangle_dependence()[:,1], 'b', label=r'$\varphi$')
         plt.xlabel('H')
         plt.ylabel(r'max angle')
+        plt.legend()
         if title: plt.title(title)
         if save:  plt.savefig(save)
         if show:  plt.show()
         plt.close('all')
 
-    def get_maxtheta_dependence(self):
-        return np.array([lc.get_max_theta() for lc in self.states])
-    def get_maxphi_dependence(self):
-        return np.array([lc.get_max_phi() for lc in self.states])
+    def get_maxangle_dependence(self):
+        return np.array([[lc.get_max_theta(),lc.get_max_phi() ] for lc in self.states])
+
     def save(self):
         for idx,lc in enumerate(self.states):
-            lc.save(self.directory+self.state_name + '_{:.5f}_{:.5f}_{:.5f}_{:.5f}.pkl'.format(self.K1,self.K2,self.K3,self.Hlist[idx]))
-        np.savez(self.directory + self.state_name + '_{:.5f}_{:.5f}_{:.5f}.npz'.format(self.K1,self.K2,self.K3),
+            lc.save(self.directory+self.state_name + '_{:.10f}_{:.10f}_{:.10f}_{:.10f}.pkl'.format(self.K1,self.K2,self.K3,self.Hlist[idx]))
+        np.savez(self.directory + self.state_name + '_{:.10f}_{:.10f}_{:.10f}.npz'.format(self.K1,self.K2,self.K3),
                     H=self.Hlist, eps=self.eps,K1=self.K1,K2=self.K2,K3=self.K3)
 
     def load(self):
-        file = np.load(self.directory + self.state_name + '_{:.5f}_{:.5f}_{:.5f}.npz'.format(self.K1,self.K2,self.K3))
+        file = np.load(self.directory + self.state_name + '_{:.10f}_{:.10f}_{:.10f}.npz'.format(self.K1,self.K2,self.K3))
         self.Hlist=file['H']
         self.eps=file['eps']
         self.K1 = file['K1']
@@ -259,7 +265,7 @@ class LcDependence():
 
         try:
             self.states=[LcCell_from_file(self.directory+self.state_name +
-                                          '_{:.5f}_{:.5f}_{:.5f}_{:.5f}.pkl'.format(self.K1,self.K2,self.K3,h)) for h in self.Hlist]
+                                          '_{:.10f}_{:.10f}_{:.10f}_{:.10f}.pkl'.format(self.K1,self.K2,self.K3,h)) for h in self.Hlist]
         except:
             return -1
         return 1
@@ -308,7 +314,10 @@ class LcMinimiser(LcDependence):
         eps_exp_par = np.array(eps_exp_par)
         eps_exp_perp = eps_exp_perp[np.invert(np.isnan(eps_exp_perp[:,0]))]
         eps_exp_par = eps_exp_par[np.invert(np.isnan(eps_exp_par[:,0]))]
-        return eps_exp_perp,eps_exp_par,np.array([[math.acos(math.sqrt((eps_exp_perp[0,1] - eps_perp) / (eps_par-eps_perp)))],[0.0]])
+        theta0=math.acos(math.sqrt((eps_exp_perp[0,1] - eps_perp) / (eps_par-eps_perp)))
+        phi0=0*np.pi/2
+        print(f'{theta0*180/np.pi = }\t{phi0*180/np.pi = }')
+        return eps_exp_perp,eps_exp_par,np.array([[theta0],[phi0]])
 
     def plot_exp(self,title=None,show=False,save=None):
         plt.plot(self.exp_eps_par[:,0], self.exp_eps_par[:,1],'bx',label=r'$\varepsilon_{\parallel}$')

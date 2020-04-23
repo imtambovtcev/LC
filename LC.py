@@ -4,12 +4,6 @@ import lcell as lc
 from time import time
 import os
 
-H=10
-hpoints = 11
-Hlist=np.linspace(0,H,hpoints,endpoint=True)
-
-
-
 GD={
     'size':[1,1,0.5*0.025],
     'K1':1.,
@@ -20,7 +14,7 @@ GD={
     'chi':0.009894/1812,
     'U':0.1/300, #V*300 = 1 sgsV
     'N':40,
-    'anc':500*40*np.array([1.,0.1]),
+    'anc':500*40*np.array([1.,0.]),
     'directory':'/home/ivan/LC/GD/',
     'state_name':'LC',
     'data':'/home/ivan/LC/Gd 17-17_exp.dat'
@@ -41,7 +35,7 @@ ER={
     'data':'/home/ivan/LC/Er_17-17_exp.csv'
 }
 CB={
-    'size':[1,1,0.025],
+    'size':[1,1,2*0.0025],
     'K1':6.2e-7,
     'K2':3.9e-7,
     'K3':8.2e-7,
@@ -50,7 +44,7 @@ CB={
     'chi':0.000028427/249.36,
     'U':0.000333564,
     'N':40,
-    'anc':500*40*np.array([1.,0.1]),
+    'anc':500000*40*np.array([1.,0.]),
     'directory':'/home/ivan/LC/5CB/',
     'state_name':'LC',
     'data':'/home/ivan/LC/5CB_new_perp.dat'
@@ -64,17 +58,13 @@ t = time()
 LCD.complex_minimize(node=4)
 print('t = {}'.format(time()-t))
 LCD.save()
-maxang=LCD.get_maxtheta_dependence()
+maxang=LCD.get_maxangle_dependence()
 eps=LCD.get_eps_dependence()
-
-
 
 LCD.plot_maxangle(show=True)
 LCD.plot_eps(show=True)
-#LCD.plot(show=True)
-LCD.plot_exp(show=True)
+#LCD.plot_exp(show=True)
 print(f'{LCD.diff() = }')
 
-
-LC=lc.LcDependence(1,0.5,2,load=True,directory=CB['directory'],state_name='LC')
+LC=lc.LcDependence(CB['K1'],CB['K2'],CB['K3'],load=True,directory=CB['directory'],state_name=CB['state_name'])
 LC.plot()
