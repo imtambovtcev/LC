@@ -12,7 +12,7 @@ class Director:
         tp0 = np.array(tp0).reshape(2, 1)
         if tp is None:
             print('initial')
-            self.tp = 0.8*np.array([np.sin(np.linspace(0., np.pi, N)) * (0.5 * np.pi - tp0[0]) + tp0[0],
+            self.tp = np.array([np.sin(np.linspace(0., np.pi, N)) * (0.5 * np.pi - tp0[0]) + tp0[0],
                                 np.sin(np.linspace(0., np.pi, N)) * (0.5 * np.pi - tp0[1]) + tp0[1]])
         else:
             self.tp = np.array(tp).reshape(2, -1)
@@ -80,7 +80,7 @@ class LcCell(Director):
         super().__init__(tp=state, N=N, tp0=self.tp0)
 
     def k_energy_density(self):
-        return 0.5*(
+        return 0.5/self.size[2]**2 *(
                     self.K1_n*np.sin(self.tp[0])**2 *self.dtp[0]**2+
                     self.K2_n*np.sin(self.tp[1])**4 *self.dtp[1]**2+
                     (np.sin(self.tp[0])**2*np.cos(self.tp[0])**2 *self.dtp[1]**2+
