@@ -290,69 +290,73 @@ class LcDependence():
 
 
 class LcMinimiser():
-    def __init__(self, system):
-        self.exp_eps_perp, self.exp_eps_par, perp_tp0, par_tp0 = self.load_file(system['data'], system['eps_par'],
-                                                                                system['eps_perp'])
-        if 'directory' in system:
-            self.directory = system['directory']
-        else:
-            self.directory = './'
-        if 'state_name' in system:
-            self.state_name = system['state_name']
-        else:
-            self.state_name = 'LC'
-        if 'size' in system:
-            size = np.array(system['size'])
-        else:
-            size = np.array([1., 1., 1.])
-        if 'state' in system:
-            state = system['state']
-        else:
-            state = None
-        if 'N' in system:
-            N = int(system['N'])
-        else:
-            N = 100
+    def __init__(self, system=None, load=None):
+        if system:
+            self.exp_eps_perp, self.exp_eps_par, perp_tp0, par_tp0 = self.load_file(system['data'], system['eps_par'],
+                                                                                    system['eps_perp'])
+            if 'directory' in system:
+                self.directory = system['directory']
+            else:
+                self.directory = './'
+            if 'state_name' in system:
+                self.state_name = system['state_name']
+            else:
+                self.state_name = 'LC'
+            if 'size' in system:
+                size = np.array(system['size'])
+            else:
+                size = np.array([1., 1., 1.])
+            if 'state' in system:
+                state = system['state']
+            else:
+                state = None
+            if 'N' in system:
+                N = int(system['N'])
+            else:
+                N = 100
 
-        self.Kv = np.zeros(
-            [2 * system['K1_grid'][1] + 1, 2 * system['K2_grid'][1] + 1, 2 * system['K3_grid'][1] + 1, 3])
-        self.perp_points = np.full(self.Kv.shape[:3], np.nan, dtype=object)
-        self.perp_eps_diff = np.zeros(self.Kv.shape[:3])
-        self.par_points = np.full(self.Kv.shape[:3], np.nan, dtype=object)
-        self.par_eps_diff = np.zeros(self.Kv.shape[:3])
-        for ct1, i in enumerate(range(-system['K1_grid'][1], system['K1_grid'][1] + 1)):
-            for ct2, j in enumerate(range(-system['K2_grid'][1], system['K2_grid'][1] + 1)):
-                for ct3, k in enumerate(range(-system['K3_grid'][1], system['K3_grid'][1] + 1)):
-                    self.Kv[ct1, ct2, ct3, :] = np.array([(1. + i * system['K1_grid'][0]) * system['K1'],
-                                                          (1. + j * system['K2_grid'][0]) * system['K2'],
-                                                          (1. + k * system['K3_grid'][0]) * system['K3']])
-                    self.perp_points[ct1, ct2, ct3] = LcDependence(Hlist=self.exp_eps_perp[:, 0],
-                                                                   K1=self.Kv[ct1, ct2, ct3, 0],
-                                                                   K2=self.Kv[ct1, ct2, ct3, 1],
-                                                                   K3=self.Kv[ct1, ct2, ct3, 2],
-                                                                   mode='perp',
-                                                                   eps_par=float(system['eps_par']),
-                                                                   eps_perp=float(system['eps_perp']),
-                                                                   chi=float(system['chi']),
-                                                                   E=float(system['U']) / system['size'][2],
-                                                                   anc=system['anc'], tp0=perp_tp0, N=N,
-                                                                   size=size, state=state)
-                    self.perp_eps_diff[ct1, ct2, ct3] = self.diff(self.perp_points[ct1, ct2, ct3])
-                    self.par_points[ct1, ct2, ct3] = LcDependence(Hlist=self.exp_eps_par[:, 0],
-                                                                  K1=self.Kv[ct1, ct2, ct3, 0],
-                                                                  K2=self.Kv[ct1, ct2, ct3, 1],
-                                                                  K3=self.Kv[ct1, ct2, ct3, 2],
-                                                                  mode='par',
-                                                                  eps_par=float(system['eps_par']),
-                                                                  eps_perp=float(system['eps_perp']),
-                                                                  chi=float(system['chi']),
-                                                                  E=float(system['U']) / system['size'][2],
-                                                                  anc=system['anc'], tp0=par_tp0, N=N,
-                                                                  size=size, state=state)
-                    self.par_eps_diff[ct1, ct2, ct3] = self.diff(self.par_points[ct1, ct2, ct3])
-        print(f'{self.Kv = }')
-        print(self.perp_points.shape)
-        print(self.par_points.shape)
+            self.Kv = np.zeros(
+                [2 * system['K1_grid'][1] + 1, 2 * system['K2_grid'][1] + 1, 2 * system['K3_grid'][1] + 1, 3])
+            self.shape = self.Kv.shape[:3]
+            self.perp_points = np.full(self.Kv.shape[:3], np.nan, dtype=object)
+            self.perp_eps_diff = np.zeros(self.Kv.shape[:3])
+            self.par_points = np.full(self.Kv.shape[:3], np.nan, dtype=object)
+            self.par_eps_diff = np.zeros(self.Kv.shape[:3])
+            for ct1, i in enumerate(range(-system['K1_grid'][1], system['K1_grid'][1] + 1)):
+                for ct2, j in enumerate(range(-system['K2_grid'][1], system['K2_grid'][1] + 1)):
+                    for ct3, k in enumerate(range(-system['K3_grid'][1], system['K3_grid'][1] + 1)):
+                        self.Kv[ct1, ct2, ct3, :] = np.array([(1. + i * system['K1_grid'][0]) * system['K1'],
+                                                              (1. + j * system['K2_grid'][0]) * system['K2'],
+                                                              (1. + k * system['K3_grid'][0]) * system['K3']])
+                        self.perp_points[ct1, ct2, ct3] = LcDependence(Hlist=self.exp_eps_perp[:, 0],
+                                                                       K1=self.Kv[ct1, ct2, ct3, 0],
+                                                                       K2=self.Kv[ct1, ct2, ct3, 1],
+                                                                       K3=self.Kv[ct1, ct2, ct3, 2],
+                                                                       mode='perp',
+                                                                       eps_par=float(system['eps_par']),
+                                                                       eps_perp=float(system['eps_perp']),
+                                                                       chi=float(system['chi']),
+                                                                       E=float(system['U']) / system['size'][2],
+                                                                       anc=system['anc'], tp0=perp_tp0, N=N,
+                                                                       size=size, state=state)
+                        self.perp_eps_diff[ct1, ct2, ct3] = self.diff(self.perp_points[ct1, ct2, ct3])
+                        self.par_points[ct1, ct2, ct3] = LcDependence(Hlist=self.exp_eps_par[:, 0],
+                                                                      K1=self.Kv[ct1, ct2, ct3, 0],
+                                                                      K2=self.Kv[ct1, ct2, ct3, 1],
+                                                                      K3=self.Kv[ct1, ct2, ct3, 2],
+                                                                      mode='par',
+                                                                      eps_par=float(system['eps_par']),
+                                                                      eps_perp=float(system['eps_perp']),
+                                                                      chi=float(system['chi']),
+                                                                      E=float(system['U']) / system['size'][2],
+                                                                      anc=system['anc'], tp0=par_tp0, N=N,
+                                                                      size=size, state=state)
+                        self.par_eps_diff[ct1, ct2, ct3] = self.diff(self.par_points[ct1, ct2, ct3])
+            print(f'{self.Kv = }')
+            print(self.perp_points.shape)
+            print(self.par_points.shape)
+        if load:
+            self.load(load)
 
     def load_file(self, filename, eps_par, eps_perp):
         f = open(filename, 'r')
@@ -387,7 +391,6 @@ class LcMinimiser():
 
     def minimize(self, nodes=1):
         assert isinstance(nodes, int) and nodes > 0
-        shape = self.perp_points.shape
         self.perp_points = self.perp_points.reshape(-1)
         if nodes == 1:
             for i, p in enumerate(self.perp_points):
@@ -397,7 +400,7 @@ class LcMinimiser():
             for i, p in enumerate(self.perp_points):
                 self.perp_points[i] = p.complex_minimize(node=nodes)
                 print(f'{i = }')
-        self.perp_points = self.perp_points.reshape(shape)
+        self.perp_points = self.perp_points.reshape(self.shape)
         shape = self.par_points.shape
         self.par_points = self.par_points.reshape(-1)
         if nodes == 1:
@@ -412,17 +415,39 @@ class LcMinimiser():
         return self
 
     def save(self):
-        shape = self.perp_points.shape
         self.perp_points = self.perp_points.reshape(-1)
         for p in self.perp_points:
             p.save(directory=self.directory, state_name=self.state_name)
-        self.perp_points = self.perp_points.reshape(shape)
-        shape = self.par_points.shape
+        self.perp_points = self.perp_points.reshape(self.shape)
         self.par_points = self.par_points.reshape(-1)
         for p in self.par_points:
             p.save(directory=self.directory, state_name=self.state_name)
-        self.par_points = self.par_points.reshape(shape)
-        # np.savez(self.directory)
+        self.par_points = self.par_points.reshape(self.shape)
+        np.savez(self.directory + self.state_name + '.npz', Kv=self.Kv,
+                 perp_eps_diff=self.perp_eps_diff, par_eps_diff=self.par_eps_diff,
+                 exp_eps_perp=self.exp_eps_perp, exp_eps_par=self.exp_eps_par)
+
+    def load(self, l):
+        self.directory = l['directory']
+        self.state_name = l['state_name']
+        file = np.load(self.directory + self.state_name + '.npz')
+        self.Kv = file['Kv']
+        self.exp_eps_perp = file['exp_eps_perp']
+        self.exp_eps_par = file['exp_eps_par']
+        self.perp_eps_diff = file['perp_eps_diff']
+        self.par_eps_diff = file['par_eps_diff']
+        self.perp_points = np.full(self.Kv.shape[:3], np.nan, dtype=object).reshape(-1)
+        self.par_points = np.full(self.Kv.shape[:3], np.nan, dtype=object).reshape(-1)
+        self.shape = self.Kv.shape[:3]
+        self.Kv = self.Kv.reshape([-1, 3])
+        for ct, K in enumerate(self.Kv):
+            self.perp_points[ct] = LcDependence(*K, 'perp',
+                                                load={'directory': self.directory, 'state_name': self.state_name})
+            self.par_points[ct] = LcDependence(*K, 'par',
+                                               load={'directory': self.directory, 'state_name': self.state_name})
+        self.Kv = self.Kv.reshape(list(self.shape) + [3])
+        self.perp_points = self.perp_points.reshape(self.shape)
+        self.par_points = self.par_points.reshape(self.shape)
 
     def diff(self, lc='all'):
         if isinstance(lc, LcDependence):
@@ -447,17 +472,15 @@ class LcMinimiser():
         plt.plot(self.exp_eps_par[:, 0], self.exp_eps_par[:, 1], 'bx', label=r'$\varepsilon_{\parallel}$')
         plt.plot(self.exp_eps_perp[:, 0], self.exp_eps_perp[:, 1], 'rx', label=r'$\varepsilon_{\perp}$')
 
-        shape = self.perp_points.shape
         self.perp_points = self.perp_points.reshape(-1)
         for p in self.perp_points:
             plt.plot(self.exp_eps_perp[:, 0], p.get_eps_dependence())
-        self.perp_points = self.perp_points.reshape(shape)
+        self.perp_points = self.perp_points.reshape(self.shape)
 
-        shape = self.par_points.shape
         self.par_points = self.par_points.reshape(-1)
         for p in self.par_points:
             plt.plot(self.exp_eps_par[:, 0], p.get_eps_dependence())
-        self.par_points = self.par_points.reshape(shape)
+        self.par_points = self.par_points.reshape(self.shape)
 
         plt.legend()
         plt.xlabel('H')

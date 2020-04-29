@@ -1,5 +1,3 @@
-from time import time
-
 import numpy as np
 
 import lcell as lc
@@ -52,7 +50,7 @@ CB = {
     'state_name': '5CB',
     'data': '/home/ivan/LC/5CB_new_perp.dat'
 }
-
+'''
 LCD = lc.LcMinimiser(CB)
 t = time()
 LCD.minimize(nodes=6)  # nodes>1 for linux only
@@ -63,6 +61,6 @@ LCD.save()
 # LCD.plot_maxangle(show=True)
 LCD.plot(show=True)
 print(f'{LCD.diff() = }')
-
-LC = lc.LcDependence(CB['K1'], CB['K2'], CB['K3'], load={'directory': CB['directory'], 'state_name': CB['state_name']})
-LC.plot()
+'''
+LCD = lc.LcMinimiser(load={'directory': CB['directory'], 'state_name': CB['state_name']})
+LCD.plot(show=True)
