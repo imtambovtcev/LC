@@ -457,30 +457,31 @@ class LcMinimiser():
                 return np.linalg.norm(self.exp_eps_par[:, 1] - lc.get_eps_dependence())
 
         elif isinstance(lc, np.ndarray) or isinstance(lc, list):
+            lc_par_arr = self.par_points[lc].reshape(-1)
+            for ct, lc0 in enumerate(lc_par_arr):
+                lc_par_arr[ct] = self.diff(lc0)
             lc_perp_arr = self.perp_points[lc].reshape(-1)
             for ct, lc0 in enumerate(lc_perp_arr):
                 lc_perp_arr[ct] = self.diff(lc0)
-            lc_par_arr = self.par_points[lc].reshape(-1)
-            for ct, lc0 in enumerate(lc_perp_arr):
-                lc_par_arr[ct] = self.diff(lc0)
             return np.array([lc_par_arr, lc_perp_arr], dtype='float64')
 
         elif lc == 'all':
-            return self.diff(np.full(self.perp_points.shape, True))
+            d = self.diff(np.full(self.perp_points.shape, True))
+            return np.array((d[0].reshape(self.shape), d[1].reshape(self.shape)))
 
     def plot(self, title=None, show=False, save=None):
         plt.plot(self.exp_eps_par[:, 0], self.exp_eps_par[:, 1], 'bx', label=r'$\varepsilon_{\parallel}$')
         plt.plot(self.exp_eps_perp[:, 0], self.exp_eps_perp[:, 1], 'rx', label=r'$\varepsilon_{\perp}$')
 
-        self.perp_points = self.perp_points.reshape(-1)
-        for p in self.perp_points:
-            plt.plot(self.exp_eps_perp[:, 0], p.get_eps_dependence())
-        self.perp_points = self.perp_points.reshape(self.shape)
-
         self.par_points = self.par_points.reshape(-1)
         for p in self.par_points:
             plt.plot(self.exp_eps_par[:, 0], p.get_eps_dependence())
         self.par_points = self.par_points.reshape(self.shape)
+
+        self.perp_points = self.perp_points.reshape(-1)
+        for p in self.perp_points:
+            plt.plot(self.exp_eps_perp[:, 0], p.get_eps_dependence())
+        self.perp_points = self.perp_points.reshape(self.shape)
 
         plt.legend()
         plt.xlabel('H')
@@ -490,7 +491,19 @@ class LcMinimiser():
         if show:  plt.show()
         plt.close('all')
 
+    def rediff(self):
+        self.par_eps_diff, self.perp_eps_diff = self.diff('all')
 
+    def best_K(self):
+        best_par_idx = np.unravel_index(np.nanargmin(self.par_eps_diff), self.shape)
+        best_perp_idx = np.unravel_index(np.nanargmin(self.perp_eps_diff), self.shape)
+        best_Kv_par = self.Kv[best_par_idx]
+        best_Kv_perp = self.Kv[best_perp_idx]
+        best_par_diff = np.nanmin(self.par_eps_diff)
+        best_perp_diff = np.nanmin(self.perp_eps_diff)
+        return np.array([best_par_idx, best_perp_idx]), \
+               np.array([best_Kv_par, best_Kv_perp]), \
+               np.array([best_par_diff, best_perp_diff])
 '''
     def plot_maxangle(self,title=None,show=False,save=None):
         shape = self.perp_points.shape

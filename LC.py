@@ -3,10 +3,13 @@ import numpy as np
 import lcell as lc
 
 GD = {
-    'size': [1, 1, 2 * 0.0025],
-    'K1': 1.0e-0,
-    'K2': 0.5e-0,
-    'K3': 2.0e-0,
+    'size': [1, 1, 0.5 * 0.025],
+    'K1': 1.0e-5,
+    'K2': 0.5e-5,
+    'K3': 2.0e-5,
+    'K1_grid': [0.1, 1],
+    'K2_grid': [0.1, 1],
+    'K3_grid': [0.1, 1],
     'eps_par': 3.85,
     'eps_perp': 6.35,
     'chi': 0.009894 / 1812,
@@ -22,6 +25,9 @@ ER = {
     'K1': 1.0e-5,
     'K2': 0.5e-5,
     'K3': 2.0e-5,
+    'K1_grid': [0.1, 1],
+    'K2_grid': [0.1, 1],
+    'K3_grid': [0.1, 1],
     'eps_par': 3.52,
     'eps_perp': 4.58,
     'chi': 0.009894 / 1812,
@@ -37,9 +43,9 @@ CB = {
     'K1': 6.2e-7,
     'K2': 3.9e-7,
     'K3': 8.2e-7,
-    'K1_grid': [0.1, 0],
-    'K2_grid': [0.1, 0],
-    'K3_grid': [0.1, 0],
+    'K1_grid': [0.1, 1],
+    'K2_grid': [0.1, 1],
+    'K3_grid': [0.1, 1],
     'eps_par': 13.14367 + 6.9,
     'eps_perp': 6.9,
     'chi': 0.000028427 / 249.36,
@@ -64,3 +70,6 @@ print(f'{LCD.diff() = }')
 '''
 LCD = lc.LcMinimiser(load={'directory': CB['directory'], 'state_name': CB['state_name']})
 LCD.plot(show=True)
+LCD.rediff()
+print(f'{LCD.diff() = }')
+print(f'{LCD.best_K() = }')
