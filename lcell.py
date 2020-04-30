@@ -5,6 +5,7 @@ from multiprocessing import Pool
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 
 
 class Director:
@@ -504,6 +505,34 @@ class LcMinimiser():
         return np.array([best_par_idx, best_perp_idx]), \
                np.array([best_Kv_par, best_Kv_perp]), \
                np.array([best_par_diff, best_perp_diff])
+
+    def diff_plot(self):
+        x = self.Kv.reshape(-1, 3)[:, 0]
+        y = self.Kv.reshape(-1, 3)[:, 1]
+        z = self.Kv.reshape(-1, 3)[:, 2]
+        s = 100 * (self.perp_eps_diff.min() / self.perp_eps_diff.reshape(-1)) ** 10
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(x, y, z, s=s)
+        ax.set_xlabel('$K_{11}$')
+        ax.set_ylabel('$K_{22}$')
+        ax.set_zlabel('$K_{33}$')
+        plt.show()
+
+    def diff_plot_K13(self):
+        best_K = self.best_K()
+        x = self.Kv[:, best_K[0][1, 1], :, 0]
+        y = self.Kv[:, best_K[0][1, 1], :, 2]
+        z = self.perp_eps_diff[:, best_K[0][1, 1], :]
+        plt.contourf(x, y, z)
+        plt.xlabel('$K_{11}$')
+        plt.ylabel('$K_{33}$')
+        plt.title('$K_{22} = ' + '{:.2e}$'.format(best_K[1][1, 1]))
+        plt.colorbar()
+        plt.tight_layout()
+        plt.show()
+
+
 '''
     def plot_maxangle(self,title=None,show=False,save=None):
         shape = self.perp_points.shape
