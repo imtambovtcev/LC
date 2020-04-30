@@ -1,3 +1,5 @@
+from time import time
+
 import numpy as np
 
 import lcell as lc
@@ -39,13 +41,13 @@ ER = {
     'data': '/home/ivan/LC/Er_17-17_exp.csv'
 }
 CB = {
-    'size': [1, 1, 0.5 * 0.025],
+    'size': [1, 1, 0.025],
     'K1': 6.2e-7,
     'K2': 3.9e-7,
     'K3': 8.2e-7,
-    'K1_grid': [0.1, 1],
-    'K2_grid': [0.1, 1],
-    'K3_grid': [0.1, 1],
+    'K1_grid': [0.1, 0],
+    'K2_grid': [0.1, 0],
+    'K3_grid': [0.1, 0],
     'eps_par': 13.14367 + 6.9,
     'eps_perp': 6.9,
     'chi': 0.000028427 / 249.36,
@@ -56,7 +58,7 @@ CB = {
     'state_name': '5CB',
     'data': '/home/ivan/LC/5CB_new_perp.dat'
 }
-'''
+
 LCD = lc.LcMinimiser(CB)
 t = time()
 LCD.minimize(nodes=6)  # nodes>1 for linux only
@@ -67,7 +69,7 @@ LCD.save()
 # LCD.plot_maxangle(show=True)
 LCD.plot(show=True)
 print(f'{LCD.diff() = }')
-'''
+
 LCD = lc.LcMinimiser(load={'directory': CB['directory'], 'state_name': CB['state_name']})
 # LCD.plot(show=True)
 LCD.rediff()
