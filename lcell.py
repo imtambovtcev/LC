@@ -1,4 +1,5 @@
 import math
+import os
 import pickle
 from multiprocessing import Pool
 
@@ -9,12 +10,17 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 
 
 class Director:
-    def __init__(self, tp=None, N=100, tp0=np.array([[0.], [0.]])):
+    def __init__(self, tp=None, N=100, tp0=np.array([[0.], [0.]]), mode=0):
         tp0 = np.array(tp0).reshape(2, 1)
         if tp is None:
-            print('initial')
-            self.tp = np.array([np.sin(np.linspace(0., np.pi, N)) * (0.5 * np.pi - tp0[0]) + tp0[0],
-                                np.sin(np.linspace(0., np.pi, N)) * (0.5 * np.pi - tp0[1]) + tp0[1]])
+            if mode == 1:
+                print('initial')
+                self.tp = np.array([np.sin(np.linspace(0., np.pi, N)) * (0.5 * np.pi - tp0[0]) + tp0[0],
+                                    np.sin(np.linspace(0., np.pi, N)) * (0.5 * np.pi - tp0[1]) + tp0[1]])
+            else:
+                print('inverse')
+                self.tp = np.array([np.sin(np.linspace(0., np.pi, N)) * (0. * np.pi - tp0[0]) + tp0[0],
+                                    np.sin(np.linspace(0., np.pi, N)) * (0. * np.pi - tp0[1]) + tp0[1]])
         else:
             self.tp = np.array(tp).reshape(2, -1)
         self.N = self.tp.shape[1]
@@ -67,17 +73,21 @@ class LcCell(Director):
         self.K1 = float(K1)
         self.K2 = float(K2)
         self.K3 = float(K3)
+        self.norm = self.K3 / (self.size[2] ** 2)
+        print(f'{self.norm = }')
         self.mode = mode
-        self.K1_n = float(K1) / float(K3)
-        self.K2_n = float(K2) / float(K3)
+        self.K1_n = self.K1 / self.norm
+        self.K2_n = self.K2 / self.norm
+        self.K3_n = self.K3 / self.norm
         self.eps_par = float(eps_par)
         self.eps_perp = float(eps_perp)
         self.chi = float(chi)
         self.E = E
         self.H = H
-        self.E_n = (self.eps_par - self.eps_perp) * (float(E) ** 2) / self.K3
-        self.H_n = self.chi * (float(H) ** 2) / self.K3
+        self.E_n = (self.eps_par - self.eps_perp) * (float(E) ** 2) / self.norm
+        self.H_n = self.chi * (float(H) ** 2) / self.norm
         self.anc = np.array(anc)
+        self.anc_n = self.anc / self.norm
         self.tp0 = np.array(tp0).reshape(2, )
         super().__init__(tp=state, N=N, tp0=self.tp0)
 
@@ -85,8 +95,8 @@ class LcCell(Director):
         return 0.5 / self.size[2] ** 2 * (
             self.K1_n * np.sin(self.tp[0]) ** 2 * self.dtp[0] ** 2 +
             self.K2_n * np.sin(self.tp[1]) ** 4 * self.dtp[1] ** 2 +
-            (np.sin(self.tp[0]) ** 2 * np.cos(self.tp[0]) ** 2 * self.dtp[1] ** 2 +
-             np.cos(self.tp[0]) ** 2 * self.dtp[0] ** 2)
+            self.K3_n * (np.sin(self.tp[0]) ** 2 * np.cos(self.tp[0]) ** 2 * self.dtp[1] ** 2 +
+                         np.cos(self.tp[0]) ** 2 * self.dtp[0] ** 2)
         )
 
     def H_energy_density(self):
@@ -100,7 +110,7 @@ class LcCell(Director):
 
     def boundary_energy(self):
         #       return self.anc*(np.linalg.norm(self.tp[:, 0]-self.tp0)**2+np.linalg.norm(self.tp[:, -1]-self.tp0)**2)  # с phi
-        return np.linalg.norm(self.anc * ((self.tp[:, 0] - self.tp0) ** 2 + (self.tp[:, -1] - self.tp0) ** 2))
+        return np.linalg.norm(self.anc_n * ((self.tp[:, 0] - self.tp0) ** 2 + (self.tp[:, -1] - self.tp0) ** 2))
 
     def energy(self):
         # print('E = ',self.k_energy_density().sum() + self.H_energy_density().sum() + self.boundary_energy(),
@@ -299,6 +309,8 @@ class LcMinimiser():
                 self.directory = system['directory']
             else:
                 self.directory = './'
+            if not os.path.exists(self.directory):
+                os.makedirs(self.directory)
             if 'state_name' in system:
                 self.state_name = system['state_name']
             else:
@@ -470,19 +482,34 @@ class LcMinimiser():
             d = self.diff(np.full(self.perp_points.shape, True))
             return np.array((d[0].reshape(self.shape), d[1].reshape(self.shape)))
 
-    def plot(self, title=None, show=False, save=None):
+    def plot_only_practics(self, lc='all', title=None, show=False, save=None):
+        plt.plot(self.exp_eps_par[:, 0], self.exp_eps_par[:, 1], 'bx', label=r'$\varepsilon_{\parallel}$')
+        plt.plot(self.exp_eps_perp[:, 0], self.exp_eps_perp[:, 1], 'rx', label=r'$\varepsilon_{\perp}$')
+        plt.legend()
+        plt.xlabel('H')
+        plt.ylabel(r'$\varepsilon$')
+        if title: plt.title(title)
+        if save:  plt.savefig(save)
+        if show:  plt.show()
+        plt.close('all')
+
+    def plot(self, lc='all', title=None, show=False, save=None):
         plt.plot(self.exp_eps_par[:, 0], self.exp_eps_par[:, 1], 'bx', label=r'$\varepsilon_{\parallel}$')
         plt.plot(self.exp_eps_perp[:, 0], self.exp_eps_perp[:, 1], 'rx', label=r'$\varepsilon_{\perp}$')
 
-        self.par_points = self.par_points.reshape(-1)
-        for p in self.par_points:
+        if lc == 'all':
+            par_points = self.par_points.reshape(-1)
+        else:
+            par_points = [self.par_points[tuple(l.tolist())] for l in lc]
+        for p in par_points:
             plt.plot(self.exp_eps_par[:, 0], p.get_eps_dependence())
-        self.par_points = self.par_points.reshape(self.shape)
 
-        self.perp_points = self.perp_points.reshape(-1)
-        for p in self.perp_points:
+        if lc == 'all':
+            perp_points = self.perp_points.reshape(-1)
+        else:
+            perp_points = [self.perp_points[tuple(l.tolist())] for l in lc]
+        for p in perp_points:
             plt.plot(self.exp_eps_perp[:, 0], p.get_eps_dependence())
-        self.perp_points = self.perp_points.reshape(self.shape)
 
         plt.legend()
         plt.xlabel('H')
@@ -494,6 +521,12 @@ class LcMinimiser():
 
     def rediff(self):
         self.par_eps_diff, self.perp_eps_diff = self.diff('all')
+
+    def get_point(self, idx, mode='perp'):
+        if mode == 'perp':
+            return self.perp_points[tuple(idx)]
+        else:
+            return self.par_points[tuple(idx)]
 
     def best_K(self):
         best_par_idx = np.unravel_index(np.nanargmin(self.par_eps_diff), self.shape)
