@@ -1,5 +1,3 @@
-from time import time
-
 import numpy as np
 
 import lcell as lc
@@ -95,9 +93,9 @@ EU = {
     'data': '/home/ivan/LC/Eu 17-1.dat'
 }
 '''
-LCD = lc.LcMinimiser(GD)
-LCD.plot_only_practics(show=True,save='GD_p.pdf')
-'''
+LCD = lc.LcMinimiser(CB)
+LCD.plot_only_practics(show=True,save='5CB_p.pdf')
+
 LCD = lc.LcMinimiser(EU)
 t = time()
 LCD.minimize(nodes=6)  # nodes>1 for linux only
@@ -107,12 +105,12 @@ LCD.save()
 
 LCD.plot(show=True)
 print(f'{LCD.diff() = }')
-
+'''
 LCD = lc.LcMinimiser(load={'directory': EU['directory'], 'state_name': EU['state_name']})
-LCD.plot(show=True, save=EU['directory'] + 'EU.pdf')
+LCD.plot_smooth(show=True, save=EU['directory'] + 'EU_s.pdf')
 LCD.rediff()
 LC = LCD.get_point([0, 0, 0], mode='perp')
-LC.plot(show=True)
+# LC.plot(show=True)
 
 print(f'{LCD.diff() = }')
 print(f'{LCD.best_K() = }')

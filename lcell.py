@@ -493,6 +493,35 @@ class LcMinimiser():
         if show:  plt.show()
         plt.close('all')
 
+    def plot_smooth(self, lc='all', title=None, show=False, save=None):
+        from scipy.signal import savgol_filter
+        plt.plot(self.exp_eps_par[:, 0], self.exp_eps_par[:, 1], 'bx', label=r'$\varepsilon_{\parallel}$')
+        plt.plot(self.exp_eps_perp[:, 0], self.exp_eps_perp[:, 1], 'rx', label=r'$\varepsilon_{\perp}$')
+
+        if lc == 'all':
+            par_points = self.par_points.reshape(-1)
+        else:
+            par_points = [self.par_points[tuple(l.tolist())] for l in lc]
+        for p in par_points:
+            yhat = savgol_filter((self.exp_eps_par[:, 0], p.get_eps_dependence()), 21, 3)
+            plt.plot(yhat[0], yhat[1])
+
+        if lc == 'all':
+            perp_points = self.perp_points.reshape(-1)
+        else:
+            perp_points = [self.perp_points[tuple(l.tolist())] for l in lc]
+        for p in perp_points:
+            yhat = savgol_filter((self.exp_eps_perp[:, 0], p.get_eps_dependence()), 21, 3)
+            plt.plot(yhat[0], yhat[1])
+
+        plt.legend()
+        plt.xlabel('H')
+        plt.ylabel(r'$\varepsilon$')
+        if title: plt.title(title)
+        if save:  plt.savefig(save)
+        if show:  plt.show()
+        plt.close('all')
+
     def plot(self, lc='all', title=None, show=False, save=None):
         plt.plot(self.exp_eps_par[:, 0], self.exp_eps_par[:, 1], 'bx', label=r'$\varepsilon_{\parallel}$')
         plt.plot(self.exp_eps_perp[:, 0], self.exp_eps_perp[:, 1], 'rx', label=r'$\varepsilon_{\perp}$')
