@@ -1,3 +1,5 @@
+import copy
+import json
 import math
 import os
 import pickle
@@ -7,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
+from ast import literal_eval
 
 
 class Director:
@@ -93,10 +96,10 @@ class LcCell(Director):
 
     def k_energy_density(self):
         return 0.5 / self.size[2] ** 2 * (
-            self.K1_n * np.sin(self.tp[0]) ** 2 * self.dtp[0] ** 2 +
-            self.K2_n * np.sin(self.tp[1]) ** 4 * self.dtp[1] ** 2 +
-            self.K3_n * (np.sin(self.tp[0]) ** 2 * np.cos(self.tp[0]) ** 2 * self.dtp[1] ** 2 +
-                         np.cos(self.tp[0]) ** 2 * self.dtp[0] ** 2)
+                self.K1_n * np.sin(self.tp[0]) ** 2 * self.dtp[0] ** 2 +
+                self.K2_n * np.sin(self.tp[1]) ** 4 * self.dtp[1] ** 2 +
+                self.K3_n * (np.sin(self.tp[0]) ** 2 * np.cos(self.tp[0]) ** 2 * self.dtp[1] ** 2 +
+                             np.cos(self.tp[0]) ** 2 * self.dtp[0] ** 2)
         )
 
     def H_energy_density(self):
@@ -119,14 +122,18 @@ class LcCell(Director):
         # return ((self.K1*np.sin(self.tp[0])**2 + self.K3*np.cos(self.tp[0])**2)*(self.dtp[0]/self.N)**2
         # - self.H*np.cos(self.tp[0])**2).sum()-self.anc*(np.cos(self.tp[0,0])+np.cos(self.tp[0,-1]))
 
-    def energy_density_plot(self, title=None, show=False, save=None):
+    def energy_density_plot(self, title='default', show=False, save=None):
+        if title == 'default':
+            _title = 'H = {:.10f}, Energy = {:.10f}'.format(self.H, self.energy())
+        else:
+            _title = title
         fig, ax1 = plt.subplots()
         ax1.set_xlabel('z')
         ax1.set_ylabel('Energy')
         ax1.plot(np.linspace(0., 1., self.N), self.k_energy_density(), 'r', label='k')
         ax1.plot(np.linspace(0., 1., self.N), self.H_energy_density(), 'b', label='H')
         plt.legend()
-        if title: plt.title(title)
+        if title: plt.title(_title)
         if save:  plt.savefig(save)
         if show:  plt.show()
         plt.close('all')
@@ -153,8 +160,7 @@ class LcCell(Director):
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
     def __repr__(self):
-        self.plot(title='H = {:.10f} Energy = {:.10f}'.format(self.H, self.energy()), show=True)
-        self.energy_density_plot('H = {:.10f}, Energy = {:.10f}'.format(self.H, self.energy()), show=True)
+        # self.plot(title='H = {:.10f} Energy = {:.10f}'.format(self.H, self.energy()), show=True)
         return 'LC_cell\n' \
                'K1={}\n' \
                'K2={}\n' \
@@ -243,7 +249,9 @@ class LcDependence():
         return self.mode
 
     def plot(self, title='H = ', show=False, save=None):
-        [print(lc) for lc in self.states]
+        for lc in self.states:
+            print(lc)
+            lc.energy_density_plot(show=True)
 
     '''        for idx,lc in enumerate(self.states):
             if title == 'H = ':
@@ -300,107 +308,151 @@ class LcDependence():
         return 1
 
 
-class LcMinimiser():
-    def __init__(self, system=None, load=None):
-        if system:
-            self.exp_eps_perp, self.exp_eps_par, perp_tp0, par_tp0 = self.load_file(system['data'], system['eps_par'],
-                                                                                    system['eps_perp'])
-            if 'directory' in system:
-                self.directory = system['directory']
+def json_load(filename, load_messages=False):
+    f = open(filename)
+    system = json.load(f)
+    _system = dict()
+    for key in system.keys():
+        try:
+            value = literal_eval(system[key])
+            if type(value) is float or type(value) is int:
+                _system[key] = value
+                if load_messages:
+                    print(f'system[{key}] saved as number :\n{_system[key]}')
             else:
-                self.directory = './'
-            if not os.path.exists(self.directory):
-                os.makedirs(self.directory)
-            if 'state_name' in system:
-                self.state_name = system['state_name']
-            else:
-                self.state_name = 'LC'
-            if 'size' in system:
-                size = np.array(system['size'])
-            else:
-                size = np.array([1., 1., 1.])
-            if 'state' in system:
-                state = system['state']
-            else:
-                state = None
-            if 'N' in system:
-                N = int(system['N'])
-            else:
-                N = 100
+                _system[key] = np.array(value)
+                if load_messages:
+                    print(f'system[{key}] saved as numpy array :\n{_system[key]}')
+        except:
+            _system[key] = system[key]
+            if load_messages:
+                print(f'system[{key}] saved as it is:\n{_system[key]}')
+    return _system
 
-            self.Kv = np.zeros(
-                [2 * system['K1_grid'][1] + 1, 2 * system['K2_grid'][1] + 1, 2 * system['K3_grid'][1] + 1, 3])
-            self.shape = self.Kv.shape[:3]
-            self.perp_points = np.full(self.Kv.shape[:3], np.nan, dtype=object)
-            self.perp_eps_diff = np.zeros(self.Kv.shape[:3])
-            self.par_points = np.full(self.Kv.shape[:3], np.nan, dtype=object)
-            self.par_eps_diff = np.zeros(self.Kv.shape[:3])
-            for ct1, i in enumerate(range(-system['K1_grid'][1], system['K1_grid'][1] + 1)):
-                for ct2, j in enumerate(range(-system['K2_grid'][1], system['K2_grid'][1] + 1)):
-                    for ct3, k in enumerate(range(-system['K3_grid'][1], system['K3_grid'][1] + 1)):
-                        self.Kv[ct1, ct2, ct3, :] = np.array([(1. + i * system['K1_grid'][0]) * system['K1'],
-                                                              (1. + j * system['K2_grid'][0]) * system['K2'],
-                                                              (1. + k * system['K3_grid'][0]) * system['K3']])
-                        self.perp_points[ct1, ct2, ct3] = LcDependence(Hlist=self.exp_eps_perp[:, 0],
-                                                                       K1=self.Kv[ct1, ct2, ct3, 0],
-                                                                       K2=self.Kv[ct1, ct2, ct3, 1],
-                                                                       K3=self.Kv[ct1, ct2, ct3, 2],
-                                                                       mode='perp',
-                                                                       eps_par=float(system['eps_par']),
-                                                                       eps_perp=float(system['eps_perp']),
-                                                                       chi=float(system['chi']),
-                                                                       E=float(system['U']) / system['size'][2],
-                                                                       anc=system['anc'], tp0=perp_tp0, N=N,
-                                                                       size=size, state=state)
-                        self.perp_eps_diff[ct1, ct2, ct3] = self.diff(self.perp_points[ct1, ct2, ct3])
-                        self.par_points[ct1, ct2, ct3] = LcDependence(Hlist=self.exp_eps_par[:, 0],
-                                                                      K1=self.Kv[ct1, ct2, ct3, 0],
-                                                                      K2=self.Kv[ct1, ct2, ct3, 1],
-                                                                      K3=self.Kv[ct1, ct2, ct3, 2],
-                                                                      mode='par',
-                                                                      eps_par=float(system['eps_par']),
-                                                                      eps_perp=float(system['eps_perp']),
-                                                                      chi=float(system['chi']),
-                                                                      E=float(system['U']) / system['size'][2],
-                                                                      anc=system['anc'], tp0=par_tp0, N=N,
-                                                                      size=size, state=state)
-                        self.par_eps_diff[ct1, ct2, ct3] = self.diff(self.par_points[ct1, ct2, ct3])
-            print(f'{self.Kv = }')
-            print(self.perp_points.shape)
-            print(self.par_points.shape)
+
+def load_experimental_file(filename, eps_par, eps_perp):
+    f = open(filename, 'r')
+    lines = f.readlines()
+    eps_exp_par = []
+    eps_exp_perp = []
+    for x in lines:
+        try:
+            x = x.split('\t')
+            try:
+                eps_exp_par.append([float(x[0]), float(x[1])])
+            except:
+                eps_exp_par.append([np.nan, np.nan])
+            try:
+                eps_exp_perp.append([float(x[0]), float(x[2])])
+            except:
+                eps_exp_perp.append([np.nan, np.nan])
+        except:
+            print('broken file')
+    f.close()
+    eps_exp_perp = np.array(eps_exp_perp)
+    eps_exp_par = np.array(eps_exp_par)
+    eps_exp_perp = eps_exp_perp[np.invert(np.isnan(eps_exp_perp[:, 0]))]
+    eps_exp_par = eps_exp_par[np.invert(np.isnan(eps_exp_par[:, 0]))]
+    theta0_perp = math.acos(math.sqrt((eps_exp_perp[0, 1] - eps_perp) / (eps_par - eps_perp)))
+    phi0_perp = 0 * np.pi / 2
+    theta0_par = math.acos(math.sqrt((eps_exp_par[0, 1] - eps_perp) / (eps_par - eps_perp)))
+    phi0_par = 0 * np.pi / 2
+    print(f'{theta0_perp*180/np.pi = }\t{phi0_perp*180/np.pi = }')
+    print(f'{theta0_par*180/np.pi = }\t{phi0_par*180/np.pi = }')
+    return eps_exp_perp, eps_exp_par, np.array([[theta0_perp], [phi0_perp]]), np.array([[theta0_par], [phi0_par]])
+
+
+class LcMinimiser:
+    def __init__(self, system=None, load=None):
+        try:
+            if system:
+                if type(system) == str:
+                    if system[-5:] == '.json':
+                        if os.path.isfile(system):
+                            print(f'Loading {system} as .json')
+                            _system = json_load(system)
+                            print(f'Success')
+                    else:
+                        raise ImportError(f'No such file: {system = }')
+
+                else:
+                    _system = copy.copy(system)
+
+                self.exp_eps_perp, self.exp_eps_par, perp_tp0, par_tp0 = load_experimental_file(_system['data'],
+                                                                                                     _system['eps_par'],
+                                                                                                     _system[
+                                                                                                         'eps_perp'])
+                if 'directory' in _system:
+                    self.directory = _system['directory']
+                else:
+                    self.directory = './'
+                if not os.path.exists(self.directory):
+                    os.makedirs(self.directory)
+                if 'state_name' in _system:
+                    self.state_name = _system['state_name']
+                else:
+                    self.state_name = 'LC'
+                if 'size' in _system:
+                    size = np.array(_system['size'])
+                else:
+                    size = np.array([1., 1., 1.])
+                if 'state' in _system:
+                    state = _system['state']
+                else:
+                    state = None
+                if 'N' in _system:
+                    N = int(_system['N'])
+                else:
+                    N = 100
+
+                self.Kv = np.zeros(
+                    [int(2 * _system['K1_grid'][1] + 1), int(2 * _system['K2_grid'][1] + 1),
+                     int(2 * _system['K3_grid'][1] + 1), 3])
+                self.shape = self.Kv.shape[:3]
+                self.perp_points = np.full(self.Kv.shape[:3], np.nan, dtype=object)
+                self.perp_eps_diff = np.zeros(self.Kv.shape[:3])
+                self.par_points = np.full(self.Kv.shape[:3], np.nan, dtype=object)
+                self.par_eps_diff = np.zeros(self.Kv.shape[:3])
+                for ct1, i in enumerate(range(-int(_system['K1_grid'][1]), int(_system['K1_grid'][1]) + 1)):
+                    for ct2, j in enumerate(range(-int(_system['K2_grid'][1]), int(_system['K2_grid'][1]) + 1)):
+                        for ct3, k in enumerate(range(-int(_system['K3_grid'][1]), int(_system['K3_grid'][1]) + 1)):
+                            self.Kv[ct1, ct2, ct3, :] = np.array([(1. + i * _system['K1_grid'][0]) * _system['K1'],
+                                                                  (1. + j * _system['K2_grid'][0]) * _system['K2'],
+                                                                  (1. + k * _system['K3_grid'][0]) * _system['K3']])
+                            self.perp_points[ct1, ct2, ct3] = LcDependence(Hlist=self.exp_eps_perp[:, 0],
+                                                                           K1=self.Kv[ct1, ct2, ct3, 0],
+                                                                           K2=self.Kv[ct1, ct2, ct3, 1],
+                                                                           K3=self.Kv[ct1, ct2, ct3, 2],
+                                                                           mode='perp',
+                                                                           eps_par=float(_system['eps_par']),
+                                                                           eps_perp=float(_system['eps_perp']),
+                                                                           chi=float(_system['chi']),
+                                                                           E=float(_system['U']) / _system['size'][2],
+                                                                           anc=_system['anc'], tp0=perp_tp0, N=N,
+                                                                           size=size, state=state)
+                            self.perp_eps_diff[ct1, ct2, ct3] = self.diff(self.perp_points[ct1, ct2, ct3])
+                            self.par_points[ct1, ct2, ct3] = LcDependence(Hlist=self.exp_eps_par[:, 0],
+                                                                          K1=self.Kv[ct1, ct2, ct3, 0],
+                                                                          K2=self.Kv[ct1, ct2, ct3, 1],
+                                                                          K3=self.Kv[ct1, ct2, ct3, 2],
+                                                                          mode='par',
+                                                                          eps_par=float(_system['eps_par']),
+                                                                          eps_perp=float(_system['eps_perp']),
+                                                                          chi=float(_system['chi']),
+                                                                          E=float(_system['U']) / _system['size'][2],
+                                                                          anc=_system['anc'], tp0=par_tp0, N=N,
+                                                                          size=size, state=state)
+                            self.par_eps_diff[ct1, ct2, ct3] = self.diff(self.par_points[ct1, ct2, ct3])
+                print(f'{self.Kv = }')
+                print(self.perp_points.shape)
+                print(self.par_points.shape)
+            else:
+                raise ImportError((f'No system file: {system = }'))
+        except ImportError as error:
+            # print(error)
+            raise
         if load:
             self.load(load)
-
-    def load_file(self, filename, eps_par, eps_perp):
-        f = open(filename, 'r')
-        lines = f.readlines()
-        eps_exp_par = []
-        eps_exp_perp = []
-        for x in lines:
-            try:
-                x = x.split('\t')
-                try:
-                    eps_exp_par.append([float(x[0]), float(x[1])])
-                except:
-                    eps_exp_par.append([np.nan, np.nan])
-                try:
-                    eps_exp_perp.append([float(x[0]), float(x[2])])
-                except:
-                    eps_exp_perp.append([np.nan, np.nan])
-            except:
-                print('broken file')
-        f.close()
-        eps_exp_perp = np.array(eps_exp_perp)
-        eps_exp_par = np.array(eps_exp_par)
-        eps_exp_perp = eps_exp_perp[np.invert(np.isnan(eps_exp_perp[:, 0]))]
-        eps_exp_par = eps_exp_par[np.invert(np.isnan(eps_exp_par[:, 0]))]
-        theta0_perp = math.acos(math.sqrt((eps_exp_perp[0, 1] - eps_perp) / (eps_par - eps_perp)))
-        phi0_perp = 0 * np.pi / 2
-        theta0_par = math.acos(math.sqrt((eps_exp_par[0, 1] - eps_perp) / (eps_par - eps_perp)))
-        phi0_par = 0 * np.pi / 2
-        print(f'{theta0_perp*180/np.pi = }\t{phi0_perp*180/np.pi = }')
-        print(f'{theta0_par*180/np.pi = }\t{phi0_par*180/np.pi = }')
-        return eps_exp_perp, eps_exp_par, np.array([[theta0_perp], [phi0_perp]]), np.array([[theta0_par], [phi0_par]])
 
     def minimize(self, nodes=1):
         assert isinstance(nodes, int) and nodes > 0

@@ -1,5 +1,5 @@
 import numpy as np
-
+from time import time
 import lcell as lc
 
 GD = {
@@ -38,7 +38,8 @@ ER = {
     'state_name': 'ER',
     'data': '/home/ivan/LC/Er_17-17_exp.csv'
 }
-CB = {
+
+CB5 = {
     'size': [1, 1, 0.5 * 0.025],
     'K1': 6.2e-7,
     'K2': 3.9e-7,
@@ -52,7 +53,7 @@ CB = {
     'U': 0.000333564 * 0,
     'N': 40,
     'anc': 100000 * 40 * np.array([1., 0.]),
-    'directory': '/home/ivan/LC/5CB2/',
+    'directory': '/home/ivan/LC/5CB/',
     'state_name': '5CB',
     'data': '/home/ivan/LC/5CB_new_perp.dat'
 }
@@ -89,31 +90,39 @@ EU = {
     'N': 200,
     'anc': 100000 * 40 * np.array([1., 1.]),
     'directory': '/home/ivan/LC/EU/',
-    'state_name': 'SM',
+    'state_name': 'EU',
     'data': '/home/ivan/LC/Eu 17-1.dat'
 }
-'''
-LCD = lc.LcMinimiser(CB)
-LCD.plot_only_practics(show=True,save='5CB_p.pdf')
 
-LCD = lc.LcMinimiser(EU)
-t = time()
-LCD.minimize(nodes=6)  # nodes>1 for linux only
-print('t = {}'.format(time() - t))
+material=CB5
 
-LCD.save()
-
-LCD.plot(show=True)
-print(f'{LCD.diff() = }')
-'''
-LCD = lc.LcMinimiser(load={'directory': EU['directory'], 'state_name': EU['state_name']})
-LCD.plot_smooth(show=True, save=EU['directory'] + 'EU_s.pdf')
-LCD.rediff()
+LCD = lc.LcMinimiser('/home/ivan/LC/5CB.json')
+# LCD = lc.LcMinimiser(CB5)
+LCD.plot_only_practics(show=True)
+LCD.plot_smooth(show=True)
 LC = LCD.get_point([0, 0, 0], mode='perp')
-# LC.plot(show=True)
+LC.plot(show=True)
 
-print(f'{LCD.diff() = }')
-print(f'{LCD.best_K() = }')
-LCD.plot([LCD.best_K()[0][1]], show=True)
-LCD.diff_plot()
-# LCD.diff_plot_K13()
+# LCD = lc.LcMinimiser(material)
+# t = time()
+# LCD.minimize(nodes=6)  # nodes>1 for linux only
+# print('t = {}'.format(time() - t))
+#
+# LCD.save()
+#
+# LCD.plot(show=True)
+# print(f'{LCD.diff() = }')
+#
+#
+#
+# LCD = lc.LcMinimiser(load={'directory': material['directory'], 'state_name': material['state_name']})
+# LCD.plot_smooth(show=True, save=material['directory'] + 'material_s.pdf')
+# LCD.rediff()
+# LC = LCD.get_point([0, 0, 0], mode='perp')
+# # LC.plot(show=True)
+#
+# print(f'{LCD.diff() = }')
+# print(f'{LCD.best_K() = }')
+# LCD.plot([LCD.best_K()[0][1]], show=True)
+# LCD.diff_plot()
+# # LCD.diff_plot_K13()
