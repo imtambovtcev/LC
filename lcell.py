@@ -48,24 +48,28 @@ class Director:
 
     def plot(self, title=None, show=False, save=None):
         fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()
+        self.plot_ax(ax1, ax2)
+
         if title:
             plt.title(title)
         ax1.set_xlabel('z')
         ax1.set_ylabel('ang')
-        ax1.plot(np.linspace(0., 1., self.N), self.tp[0] * 180 / np.pi, 'r', label='theta')
-        ax1.plot(np.linspace(0., 1., self.N), self.tp[1] * 180 / np.pi, 'b', label='phi')
-        fig.tight_layout()
-        plt.legend()
-        ax2 = ax1.twinx()
         ax2.set_ylabel('grad')
-        ax2.plot(np.linspace(0., 1., self.N), self.dtp[0], 'r--', label='dtheta')
-        ax2.plot(np.linspace(0., 1., self.N), self.dtp[1], 'b--', label='dphi')
+        plt.legend()
         plt.tight_layout()
         if save:
             plt.savefig(save)
         if show:
             plt.show()
         plt.close('all')
+
+    def plot_ax(self, ax1, ax2):
+        ax1.plot(np.linspace(0., 1., self.N), self.tp[0] * 180 / np.pi, 'r', label='theta')
+        ax1.plot(np.linspace(0., 1., self.N), self.tp[1] * 180 / np.pi, 'b', label='phi')
+        if ax2 is not None:
+            ax2.plot(np.linspace(0., 1., self.N), self.dtp[0], 'r--', label='dtheta')
+            ax2.plot(np.linspace(0., 1., self.N), self.dtp[1], 'b--', label='dphi')
 
 
 class LcCell(Director):
@@ -127,16 +131,20 @@ class LcCell(Director):
             _title = 'H = {:.10f}, Energy = {:.10f}'.format(self.H, self.energy())
         else:
             _title = title
-        fig, ax1 = plt.subplots()
-        ax1.set_xlabel('z')
-        ax1.set_ylabel('Energy')
-        ax1.plot(np.linspace(0., 1., self.N), self.k_energy_density(), 'r', label='k')
-        ax1.plot(np.linspace(0., 1., self.N), self.H_energy_density(), 'b', label='H')
+
+        fig, ax = plt.subplots()
+        self.energy_density_plot_ax(ax)
+        ax.set_xlabel('z')
+        ax.set_ylabel('Energy')
         plt.legend()
         if title: plt.title(_title)
         if save:  plt.savefig(save)
         if show:  plt.show()
         plt.close('all')
+
+    def energy_density_plot_ax(self, ax):
+        ax.plot(np.linspace(0., 1., self.N), self.k_energy_density(), 'r', label='k')
+        ax.plot(np.linspace(0., 1., self.N), self.H_energy_density(), 'b', label='H')
 
     def weak_restate(self, state):
         self.newtp(state)
@@ -249,9 +257,20 @@ class LcDependence():
         return self.mode
 
     def plot(self, title='H = ', show=False, save=None):
+        fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()
+        for lc in self.states:
+            # print(lc)
+            # lc.energy_density_plot(show=True)
+            lc.plot_ax(ax1=ax1, ax2=None)
+        if save: plt.savefig(save)
+        if show: plt.show()
+
+    def plot_one_by_one(self):
         for lc in self.states:
             print(lc)
             lc.energy_density_plot(show=True)
+            lc.plot(show=True)
 
     '''        for idx,lc in enumerate(self.states):
             if title == 'H = ':
@@ -372,16 +391,17 @@ class LcMinimiser:
                             print(f'Loading {system} as .json')
                             _system = json_load(system)
                             print(f'Success')
+                        else:
+                            raise ImportError(f'No such file: {system = }')
                     else:
-                        raise ImportError(f'No such file: {system = }')
-
+                        raise ImportError(f'Not a .json file: {system = }')
                 else:
                     _system = copy.copy(system)
 
                 self.exp_eps_perp, self.exp_eps_par, perp_tp0, par_tp0 = load_experimental_file(_system['data'],
-                                                                                                     _system['eps_par'],
-                                                                                                     _system[
-                                                                                                         'eps_perp'])
+                                                                                                _system['eps_par'],
+                                                                                                _system[
+                                                                                                    'eps_perp'])
                 if 'directory' in _system:
                     self.directory = _system['directory']
                 else:
@@ -603,7 +623,7 @@ class LcMinimiser:
     def rediff(self):
         self.par_eps_diff, self.perp_eps_diff = self.diff('all')
 
-    def get_point(self, idx, mode='perp'):
+    def get_point(self, idx, mode='perp') -> LcDependence:
         if mode == 'perp':
             return self.perp_points[tuple(idx)]
         else:
