@@ -380,6 +380,92 @@ def load_experimental_file(filename, eps_par, eps_perp):
     print(f'{theta0_par*180/np.pi = }\t{phi0_par*180/np.pi = }')
     return eps_exp_perp, eps_exp_par, np.array([[theta0_perp], [phi0_perp]]), np.array([[theta0_par], [phi0_par]])
 
+class System:
+    def __init__(self, system):
+        try:
+            if type(system) == str:
+                if system[-5:] == '.json':
+                    if os.path.isfile(system):
+                        print(f'Loading {system} as .json')
+                        _system = json_load(system)
+                        print(f'Success')
+                    else:
+                        raise ImportError(f'No such file: {system = }')
+                else:
+                    raise ImportError(f'Not a .json file: {system = }')
+            else:
+                _system = copy.copy(system)
+
+            self.exp_eps_perp, self.exp_eps_par, perp_tp0, par_tp0 = load_experimental_file(_system['data'],
+                                                                                            _system['eps_par'],
+                                                                                            _system['eps_perp'])
+            if 'directory' in _system:
+                self.directory = _system['directory']
+            else:
+                self.directory = './'
+            if not os.path.exists(self.directory):
+                os.makedirs(self.directory)
+            if 'state_name' in _system:
+                self.state_name = _system['state_name']
+            else:
+                self.state_name = 'LC'
+            if 'size' in _system:
+                size = np.array(_system['size'])
+            else:
+                size = np.array([1., 1., 1.])
+            if 'state' in _system:
+                state = _system['state']
+            else:
+                state = None
+            if 'N' in _system:
+                N = int(_system['N'])
+            else:
+                N = 100
+
+            self.Kv = np.zeros(
+                [int(2 * _system['K1_grid'][1] + 1), int(2 * _system['K2_grid'][1] + 1),
+                 int(2 * _system['K3_grid'][1] + 1), 3])
+            self.shape = self.Kv.shape[:3]
+            self.perp_points = np.full(self.Kv.shape[:3], np.nan, dtype=object)
+            self.perp_eps_diff = np.zeros(self.Kv.shape[:3])
+            self.par_points = np.full(self.Kv.shape[:3], np.nan, dtype=object)
+            self.par_eps_diff = np.zeros(self.Kv.shape[:3])
+            for ct1, i in enumerate(range(-int(_system['K1_grid'][1]), int(_system['K1_grid'][1]) + 1)):
+                for ct2, j in enumerate(range(-int(_system['K2_grid'][1]), int(_system['K2_grid'][1]) + 1)):
+                    for ct3, k in enumerate(range(-int(_system['K3_grid'][1]), int(_system['K3_grid'][1]) + 1)):
+                        self.Kv[ct1, ct2, ct3, :] = np.array([(1. + i * _system['K1_grid'][0]) * _system['K1'],
+                                                              (1. + j * _system['K2_grid'][0]) * _system['K2'],
+                                                              (1. + k * _system['K3_grid'][0]) * _system['K3']])
+                        self.perp_points[ct1, ct2, ct3] = LcDependence(Hlist=self.exp_eps_perp[:, 0],
+                                                                       K1=self.Kv[ct1, ct2, ct3, 0],
+                                                                       K2=self.Kv[ct1, ct2, ct3, 1],
+                                                                       K3=self.Kv[ct1, ct2, ct3, 2],
+                                                                       mode='perp',
+                                                                       eps_par=float(_system['eps_par']),
+                                                                       eps_perp=float(_system['eps_perp']),
+                                                                       chi=float(_system['chi']),
+                                                                       E=float(_system['U']) / _system['size'][2],
+                                                                       anc=_system['anc'], tp0=perp_tp0, N=N,
+                                                                       size=size, state=state)
+                        self.perp_eps_diff[ct1, ct2, ct3] = self.diff(self.perp_points[ct1, ct2, ct3])
+                        self.par_points[ct1, ct2, ct3] = LcDependence(Hlist=self.exp_eps_par[:, 0],
+                                                                      K1=self.Kv[ct1, ct2, ct3, 0],
+                                                                      K2=self.Kv[ct1, ct2, ct3, 1],
+                                                                      K3=self.Kv[ct1, ct2, ct3, 2],
+                                                                      mode='par',
+                                                                      eps_par=float(_system['eps_par']),
+                                                                      eps_perp=float(_system['eps_perp']),
+                                                                      chi=float(_system['chi']),
+                                                                      E=float(_system['U']) / _system['size'][2],
+                                                                      anc=_system['anc'], tp0=par_tp0, N=N,
+                                                                      size=size, state=state)
+                        self.par_eps_diff[ct1, ct2, ct3] = self.diff(self.par_points[ct1, ct2, ct3])
+            print(f'{self.Kv = }')
+            print(self.perp_points.shape)
+            print(self.par_points.shape)
+        except ImportError as error:
+            # print(error)
+            raise
 
 class LcMinimiser:
     def __init__(self, system=None, load=None):

@@ -96,22 +96,25 @@ EU = {
 
 material = CB5
 
+
+
 LCD = lc.LcMinimiser('/home/ivan/LC/GD.json')
+
 # LCD = lc.LcMinimiser(CB5)
 # LCD.plot_only_practics(show=True)
-LCD.plot(show=True)
-# LCD.plot([LCD.best_K()[0][1]], show=True)
-LC = LCD.get_point([0, 0, 0], mode='perp')
-# LC.plot_maxangle(show=True)
-LC.plot(show=True)
-# LC.plot_one_by_one()
-
-# LCD = lc.LcMinimiser(material)
-t = time()
-LCD.minimize(nodes=6)  # nodes>1 for linux only
-print('t = {}'.format(time() - t))
+# LCD.plot(show=True)
+# # LCD.plot([LCD.best_K()[0][1]], show=True)
+# LC = LCD.get_point([0, 0, 0], mode='perp')
+# # LC.plot_maxangle(show=True)
+# LC.plot(show=True)
+# # LC.plot_one_by_one()41
 #
-LCD.save()
+# # LCD = lc.LcMinimiser(material)
+# t = time()
+# LCD.minimize(nodes=6)  # nodes>1 for linux only
+# print('t = {}'.format(time() - t))
+# #
+# LCD.save()
 #
 # LCD.plot(show=True)
 # print(f'{LCD.diff() = }')
