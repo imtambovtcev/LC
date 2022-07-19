@@ -15,6 +15,7 @@ import scipy.optimize
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from ast import literal_eval
 
+
 # CGS SU is used
 # [K1,K2,K3]=dyn
 # [l]=cm
@@ -41,6 +42,7 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
+
 
 class Experiment:
     def __init__(self, filename=None):
@@ -242,15 +244,15 @@ class Director:
 
         self.phi = self.phi.reshape(-1)
 
-        self.dtheta = np.zeros(self.N)
-        self.dphi = np.zeros(self.N)
+        self.dtheta = np.zeros(N)
+        self.dphi = np.zeros(N)
         self.rediff()
 
     @property
     def N(self):
         return len(self.theta)
 
-    def rediff(self):
+    def rediff(self): # dtheta = (d theta/ d z) * l_z; [dtheta] = 1
         self.dtheta[0] = 2 * (self.theta[1] - self.theta[0])
         self.dtheta[1:-1] = self.theta[2:] - self.theta[:-2]
         self.dtheta[-1] = 2 * (self.theta[-1] - self.theta[-2])
@@ -259,8 +261,8 @@ class Director:
         self.dphi[1:-1] = self.phi[2:] - self.phi[:-2]
         self.dphi[-1] = 2 * (self.phi[-1] - self.phi[-2])
 
-        self.dtheta *= 0.5 * self.N  # ???
-        self.dphi *= 0.5 * self.N  # ???
+        self.dtheta *= 0.5 * self.N
+        self.dphi *= 0.5 * self.N
 
     def plot(self, title=None, show=False, save=None):
         fig, ax1 = plt.subplots()
@@ -405,17 +407,19 @@ class Cell(Director):
         return self
 
     @property
-    def norm(self):
+    def norm(self):  # Dyn/cm^2 ?
         return self._norm
 
     @norm.setter
     def norm(self, norm):
         self._norm = norm
-        self._K1_n = self.K1 / self.norm
+        self._K1_n = self.K1 / self.norm # cm^2
         self._K2_n = self.K2 / self.norm
         self._K3_n = self.K3 / self.norm
-        self._E_n = (self.eps_par - self.eps_perp) * (self.E * self.E) / self.norm
-        self._H_n = self.chi * (self.H * self.H) / self.norm
+        # [epsilon E ^ 2] = dyn / cm ^ 2
+        self._E_n = (self.eps_par - self.eps_perp) * (self.E * self.E) / self.norm # 1
+        # [chi H ^ 2] = dyn / cm ^ 2
+        self._H_n = self.chi * (self.H * self.H) / self.norm # 1
         self._anc_theta_n = self.anc_theta / self.norm
         self._anc_phi_n = self.anc_phi / self.norm
 
@@ -491,7 +495,7 @@ class Cell(Director):
     def k_energy_density(self):
         raise NotImplementedError
 
-    def _k_energy_density_theta_phi(self):
+    def _k_energy_density_theta_phi(self): # = 1
         return 0.5 / self.size[2] ** 2 * (
                 self._K1_n * np.sin(self.theta) ** 2 * self.dtheta ** 2 +
                 self._K2_n * np.sin(self.phi) ** 4 * self.dphi ** 2 +
@@ -507,7 +511,7 @@ class Cell(Director):
     def H_energy_density(self):
         raise NotImplementedError
 
-    def _H_energy_density_par(self):
+    def _H_energy_density_par(self): #1
         return -self._H_n * (np.cos(self.theta) ** 2)
 
     def _H_energy_density_perp_theta(self):
@@ -533,10 +537,14 @@ class Cell(Director):
     def _boundary_energy_rigid(self):
         return 0.
 
-    def energy(self):
-        # print('E = ',self.k_energy_density().sum() + self.H_energy_density().sum() + self.boundary_energy(),
-        # 'Ek = ',self.k_energy_density().sum(),'Ef = ', self.H_energy_density().sum(),'Eb = ',self.boundary_energy())
+    def energy_n(self):
         return self.k_energy_density().sum() + self.H_energy_density().sum() + self.E_energy_density().sum() + self.boundary_energy()
+
+    def energy(self):  # = Erg = Dyn * cm
+        return self.size[0] * self.size[1] * self.size[2] * self.norm * (self.k_energy_density().sum() +
+                                                                         self.H_energy_density().sum() +
+                                                                         self.E_energy_density().sum() +
+                                                                         self.boundary_energy())/self.N
 
     def energy_density_plot(self, title='default', show=False, save=None):
         if title == 'default':
@@ -561,7 +569,7 @@ class Cell(Director):
     def restate(self, tp):
         self.set_tp(tp)
         self.rediff()
-        return self.energy()
+        return self.energy_n()
 
     # def strong_restate(self, state):
     #     self.newtp(state)
@@ -991,7 +999,7 @@ class Minimiser:
         self.experiment = Experiment()
         self.field = Field()
 
-    def init(self, material, experiment, save_directory, K1_list=None, K2_list=None, K3_list=None):
+    def init(self, material, experiment, save_directory, K1_list=None, K2_list=None, K3_list=None, N=40):
         self.material = Material(material)
         self.experiment = Experiment(experiment)
 
@@ -1014,7 +1022,7 @@ class Minimiser:
         self.save_directory = save_directory
         self.field = Field()
         self.field.init(material=self.material, experiment=self.experiment, K1_list=K1_list, K2_list=K2_list,
-                        K3_list=K3_list)
+                        K3_list=K3_list, N=N)
 
         return self
 
@@ -1079,7 +1087,7 @@ class Minimiser:
     #         d = self.diff(np.full(self.perp_points.shape, True))
     #         return np.array((d[0].reshape(self.shape), d[1].reshape(self.shape)))
 
-    def plot_only_practics(self, lc='all', title=None, show=False, save=None):
+    def plot_only_practics(self, title=None, show=False, save=None):
         plt.plot(self.experiment.eps_par[:, 0], self.experiment.eps_par[:, 1], 'bx', label=r'$\varepsilon_{\parallel}$')
         plt.plot(self.experiment.eps_perp[:, 0], self.experiment.eps_perp[:, 1], 'rx', label=r'$\varepsilon_{\perp}$')
         plt.legend()
@@ -1126,6 +1134,30 @@ class Minimiser:
         ax.plot(self.experiment.eps_perp[:, 0], self.experiment.eps_perp[:, 1], 'rx', label=r'$\varepsilon_{\perp}$')
 
         self.field.plot_ax(ax, points=points)
+
+        plt.legend()
+        plt.xlabel('H')
+        plt.ylabel(r'$\varepsilon$')
+        if title: plt.title(title)
+        if save:  plt.savefig(save)
+        if show:  plt.show()
+        plt.close('all')
+
+    def plot_best(self, title=None, show=False, save=None):
+        fig, ax = plt.subplots()
+
+        ax.plot(self.experiment.eps_par[:, 0], self.experiment.eps_par[:, 1], 'bx', label=r'$\varepsilon_{\parallel}$')
+        ax.plot(self.experiment.eps_perp[:, 0], self.experiment.eps_perp[:, 1], 'rx', label=r'$\varepsilon_{\perp}$')
+
+        kv = self.field.best(self.experiment)
+
+        self.field.plot_ax(ax, points=kv)
+
+        # Static and Dynamic Continuum Theory of Liquid Crystals pp.78
+        Hc = np.pi / self.material.size[2] * np.sqrt(kv[2] / self.material.chi)
+        print(f'{Hc = }')
+
+        ax.axvline(x=Hc, c='grey')
 
         plt.legend()
         plt.xlabel('H')

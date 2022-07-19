@@ -96,18 +96,21 @@ EU = {
 }
 
 material = lc.Material()
-material.load('/home/ivan/LC/GD.json')
+material.load('/home/ivan/LC/5CB.json')
 print(f'{material = }')
 
-experiment = lc.Experiment('/home/ivan/LC/Gd 17-17_exp.dat')
+experiment = lc.Experiment('/home/ivan/LC/5CB_new_perp.dat')
 
 print(f'{experiment = }')
 
-LCD = lc.Minimiser().init(material=material, experiment=experiment, save_directory="/home/ivan/LC/GD/",
-                          K1_list=1.0e-5 * np.array([1.0, ]), K2_list=0.5e-5 * np.array([1.0, ]),
-                          K3_list=2.0e-5 * np.array([1.0, 1.1]))
+save_directory = "/home/ivan/LC/5CB/"
 
-# LCD = lc.Minimiser().load_from_directory(material=material, experiment=experiment, save_directory="/home/ivan/LC/GD/")
+LCD = lc.Minimiser().init(material=material, experiment=experiment, save_directory=save_directory,
+                          K1_list=6.2e-7 * np.array([1.0, ]), K2_list=3.9e-7 * np.array([1.0, ]),
+                          K3_list=8.2e-7 * np.array([1.0,]), N=40)
+
+# LCD = lc.Minimiser().load_from_directory(material=material, experiment=experiment, save_directory=save_directory)
+
 LCD.field.minimize(nodes=4)
 
 print(f'{LCD = }')
@@ -123,11 +126,13 @@ print(f'{LCD.field.best(experiment=experiment)}')
 LCD.field.best_perp(experiment=experiment).plot(show=True)
 LCD.field.best_par(experiment=experiment).plot(show=True)
 
-print(f'{LCD.field.best_perp(experiment=experiment).nearest(H=5000) = }')
+print(f'{LCD.field.best_perp(experiment=experiment).nearest(H=5000).energy() = } Erg')
 
-LCD.plot(show=True, points=[...,...,...])
+# LCD.plot(show=True, points=[...,...,...])
 
-LCD.save()
+LCD.plot_best(show=True)
+
+# LCD.save()
 
 # LCD = lc.LcMinimiser(CB5)
 # LCD.plot_only_practics(show=True)
