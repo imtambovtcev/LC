@@ -15,6 +15,8 @@ import scipy.optimize
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from ast import literal_eval
 
+from scipy.interpolate import interp1d
+
 
 # CGS SU is used
 # [K1,K2,K3]=dyn
@@ -122,7 +124,7 @@ class Material:
                 self.theta0_perp = system.theta0_perp
                 self.phi0_par = system.phi0_par
                 self.phi0_perp = system.phi0_perp
-                return
+                return self
 
             elif isinstance(system, list) or isinstance(system, str):
                 if isinstance(system, list):
@@ -209,6 +211,7 @@ class Material:
         except ImportError as error:
             # print(error)
             raise
+        return self
 
     def __repr__(self):
         return f'\n\tstate_name:{self.state_name}\n' \
@@ -252,7 +255,19 @@ class Director:
     def N(self):
         return len(self.theta)
 
-    def rediff(self): # dtheta = (d theta/ d z) * l_z; [dtheta] = 1
+    @N.setter
+    def N(self, new_N: int):
+        old_x = np.linspace(0., 1., self.N, endpoint=True)
+        new_x = np.linspace(0., 1., new_N, endpoint=True)
+        f = interp1d(old_x, self.theta)
+        self.theta = f(new_x)
+        f = interp1d(old_x, self.phi)
+        self.phi = f(new_x)
+        self.dtheta = np.zeros(new_N)
+        self.dphi = np.zeros(new_N)
+        self.rediff()
+
+    def rediff(self):  # dtheta = (d theta/ d z) * l_z; [dtheta] = 1
         self.dtheta[0] = 2 * (self.theta[1] - self.theta[0])
         self.dtheta[1:-1] = self.theta[2:] - self.theta[:-2]
         self.dtheta[-1] = 2 * (self.theta[-1] - self.theta[-2])
@@ -413,13 +428,13 @@ class Cell(Director):
     @norm.setter
     def norm(self, norm):
         self._norm = norm
-        self._K1_n = self.K1 / self.norm # cm^2
+        self._K1_n = self.K1 / self.norm  # cm^2
         self._K2_n = self.K2 / self.norm
         self._K3_n = self.K3 / self.norm
         # [epsilon E ^ 2] = dyn / cm ^ 2
-        self._E_n = (self.eps_par - self.eps_perp) * (self.E * self.E) / self.norm # 1
+        self._E_n = (self.eps_par - self.eps_perp) * (self.E * self.E) / self.norm  # 1
         # [chi H ^ 2] = dyn / cm ^ 2
-        self._H_n = self.chi * (self.H * self.H) / self.norm # 1
+        self._H_n = self.chi * (self.H * self.H) / self.norm  # 1
         self._anc_theta_n = self.anc_theta / self.norm
         self._anc_phi_n = self.anc_phi / self.norm
 
@@ -474,11 +489,11 @@ class Cell(Director):
         return np.concatenate(self.theta, self.phi)
 
     def _set_tp_theta_phi_hard(self, tp):
-        self.theta[1:-1] = tp[:self.N - 1]
-        self.phi[1:-1] = tp[self.N - 1:-1]
+        self.theta[1:-1] = tp[:self.N - 2]
+        self.phi[1:-1] = tp[self.N - 2:]
 
     def _get_tp_theta_phi_hard(self):
-        return np.concatenate(self.theta[1:-1], self.phi[1:-1])
+        return np.concatenate([self.theta[1:-1], self.phi[1:-1]])
 
     def _set_tp_theta_soft(self, tp):
         self.theta = tp
@@ -495,7 +510,7 @@ class Cell(Director):
     def k_energy_density(self):
         raise NotImplementedError
 
-    def _k_energy_density_theta_phi(self): # = 1
+    def _k_energy_density_theta_phi(self):  # = 1
         return 0.5 / self.size[2] ** 2 * (
                 self._K1_n * np.sin(self.theta) ** 2 * self.dtheta ** 2 +
                 self._K2_n * np.sin(self.phi) ** 4 * self.dphi ** 2 +
@@ -511,7 +526,7 @@ class Cell(Director):
     def H_energy_density(self):
         raise NotImplementedError
 
-    def _H_energy_density_par(self): #1
+    def _H_energy_density_par(self):  # 1
         return -self._H_n * (np.cos(self.theta) ** 2)
 
     def _H_energy_density_perp_theta(self):
@@ -544,7 +559,7 @@ class Cell(Director):
         return self.size[0] * self.size[1] * self.size[2] * self.norm * (self.k_energy_density().sum() +
                                                                          self.H_energy_density().sum() +
                                                                          self.E_energy_density().sum() +
-                                                                         self.boundary_energy())/self.N
+                                                                         self.boundary_energy()) / self.N
 
     def energy_density_plot(self, title='default', show=False, save=None):
         if title == 'default':
@@ -753,8 +768,11 @@ class Dependence():
         if show:  plt.show()
         plt.close('all')
 
-    def plot_eps_ax(self, ax):
-        ax.plot(self.Hlist, self.eps)
+    def plot_eps_ax(self, ax, color=None):
+        if color is not None:
+            ax.plot(self.Hlist, self.eps, color=color)
+        else:
+            ax.plot(self.Hlist, self.eps)
 
     def plot_maxangle(self, title=None, show=False, save=None):
         plt.plot(self.Hlist, self.get_maxangle_dependence()[:, 0], 'r', label=r'$\theta$')
@@ -910,7 +928,7 @@ class Field:
         [self.perp_points[d].minimize(nodes=nodes) for d in self.perp_points]
         [self.par_points[d].minimize(nodes=nodes) for d in self.par_points]
 
-    def plot_ax(self, ax, points=None):
+    def plot_ax(self, ax, points=None, colors=None):
         if points is None:
             points = [..., ..., ...]
         # nearest or all
@@ -925,8 +943,13 @@ class Field:
         for i in k1:
             for j in k2:
                 for k in k3:
-                    self.perp_points[(i, j, k)].plot_eps_ax(ax)
-                    self.par_points[(i, j, k)].plot_eps_ax(ax)
+                    if colors is not None:
+                        self.perp_points[(i, j, k)].plot_eps_ax(ax, color='r')
+                        self.par_points[(i, j, k)].plot_eps_ax(ax, color='b')
+
+                    else:
+                        self.perp_points[(i, j, k)].plot_eps_ax(ax)
+                        self.par_points[(i, j, k)].plot_eps_ax(ax)
 
     def nearest_perp(self, point):
         # returns Dependence (perp) on a grid to given point
@@ -1029,14 +1052,20 @@ class Minimiser:
     def load_from_directory(self, material, experiment, save_directory):
         self.material = Material(material)
         self.experiment = Experiment(experiment)
+        try:
+            theta0_perp = math.acos(math.sqrt(
+                (self.experiment.eps_perp[0, 1] - self.material.eps_perp) / (
+                        self.material.eps_par - self.material.eps_perp)))
+        except ValueError as e:
+            raise
 
-        theta0_perp = math.acos(math.sqrt(
-            (self.experiment.eps_perp[0, 1] - self.material.eps_perp) / (
-                    self.material.eps_par - self.material.eps_perp)))
         phi0_perp = 0 * np.pi / 2
-        theta0_par = math.acos(math.sqrt(
-            (self.experiment.eps_par[0, 1] - self.material.eps_perp) / (
-                    self.material.eps_par - self.material.eps_perp)))
+        try:
+            theta0_par = math.acos(math.sqrt(
+                (self.experiment.eps_par[0, 1] - self.material.eps_perp) / (
+                        self.material.eps_par - self.material.eps_perp)))
+        except ValueError as e:
+            raise
         phi0_par = 0 * np.pi / 2
         print(f'{theta0_perp*180/np.pi = }\t{phi0_perp*180/np.pi = }')
         print(f'{theta0_par*180/np.pi = }\t{phi0_par*180/np.pi = }')
@@ -1143,7 +1172,7 @@ class Minimiser:
         if show:  plt.show()
         plt.close('all')
 
-    def plot_best(self, title=None, show=False, save=None):
+    def plot_best(self, title=None, show: bool = False, save: str=None):
         fig, ax = plt.subplots()
 
         ax.plot(self.experiment.eps_par[:, 0], self.experiment.eps_par[:, 1], 'bx', label=r'$\varepsilon_{\parallel}$')
@@ -1151,13 +1180,15 @@ class Minimiser:
 
         kv = self.field.best(self.experiment)
 
-        self.field.plot_ax(ax, points=kv)
+        self.field.plot_ax(ax, points=kv, colors='rb')
 
         # Static and Dynamic Continuum Theory of Liquid Crystals pp.78
         Hc = np.pi / self.material.size[2] * np.sqrt(kv[2] / self.material.chi)
         print(f'{Hc = }')
 
         ax.axvline(x=Hc, c='grey')
+
+        ax.axvline(x=Hc * 2 / np.pi, c='r')  # ???
 
         plt.legend()
         plt.xlabel('H')

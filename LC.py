@@ -95,44 +95,107 @@ EU = {
     'data': '/home/ivan/LC/Eu 17-1.dat'
 }
 
-material = lc.Material()
-material.load('/home/ivan/LC/5CB.json')
-print(f'{material = }')
+# LCD = lc.Minimiser().init(material=lc.Material().load('/home/ivan/LC/test.json'),
+#                           experiment=lc.Experiment('/home/ivan/LC/test.dat'),
+#                           save_directory="/home/ivan/LC/test/",
+#                           K1_list=1.e-5 * np.array([1.0, ]),
+#                           K2_list=1.e-5 * np.array([1.0, ]),
+#                           K3_list=1.e-5 * np.array([1.0]),
+#                           N=40)
 
-experiment = lc.Experiment('/home/ivan/LC/5CB_new_perp.dat')
+# LCD = lc.Minimiser().init(material=lc.Material().load('/home/ivan/LC/5CB.json'),
+#                           experiment=lc.Experiment('/home/ivan/LC/5CB_new_perp.dat'),
+#                           save_directory="/home/ivan/LC/5CB/",
+#                           K1_list=6.2e-7 * np.array([0.8, 0.9, 1.0, 1.1, 1.2]),
+#                           K2_list=3.9e-7 * np.array([1.0, ]),
+#                           K3_list=8.2e-7 * np.array([0.8, 0.9, 1.0, 1.1, 1.2]),
+#                           N=40)
 
-print(f'{experiment = }')
+# LCD = lc.Minimiser().load_from_directory(material=lc.Material().load('/home/ivan/LC/5CB.json'),
+#                           experiment=lc.Experiment('/home/ivan/LC/5CB_new_perp.dat'),
+#                           save_directory="/home/ivan/LC/5CB/",)
 
-save_directory = "/home/ivan/LC/5CB/"
 
-LCD = lc.Minimiser().init(material=material, experiment=experiment, save_directory=save_directory,
-                          K1_list=6.2e-7 * np.array([1.0, ]), K2_list=3.9e-7 * np.array([1.0, ]),
-                          K3_list=8.2e-7 * np.array([1.0,]), N=40)
+# LCD = lc.Minimiser().init(material=lc.Material().load('/home/ivan/LC/GD.json'),
+#                           experiment=lc.Experiment('/home/ivan/LC/Gd 17-17_exp.dat'),
+#                           save_directory="/home/ivan/LC/GD/",
+#                           K1_list=0.00035 * np.linspace(0.5,1.5,11),
+#                           K2_list=0.5e-4 * np.array([1.0,]),
+#                           K3_list=0.0015 * np.linspace(0.5,1.5,11),
+#                           N=40)
 
-# LCD = lc.Minimiser().load_from_directory(material=material, experiment=experiment, save_directory=save_directory)
+# LCD = lc.Minimiser().load_from_directory(material=lc.Material().load('/home/ivan/LC/GD.json'),
+#                           experiment=lc.Experiment('/home/ivan/LC/Gd 17-17_exp.dat'),
+#                           save_directory="/home/ivan/LC/GD/",)
 
-LCD.field.minimize(nodes=4)
+# LCD = lc.Minimiser().init(material=lc.Material().load('/home/ivan/LC/ER.json'),
+#                           experiment=lc.Experiment('/home/ivan/LC/Er_17-17_exp.csv'),
+#                           save_directory="/home/ivan/LC/ER/",
+#                           K1_list=0.0001 * np.linspace(0.5,2,11),
+#                           K2_list=0.5e-5 * np.array([1.0,]),
+#                           K3_list=0.0009 * np.linspace(0.5,2,11),
+#                           N=40)
+
+# LCD = lc.Minimiser().load_from_directory(material=lc.Material().load('/home/ivan/LC/ER.json'),
+#                           experiment=lc.Experiment('/home/ivan/LC/Er_17-17_exp.csv'),
+#                           save_directory="/home/ivan/LC/ER/",)
+
+# LCD = lc.Minimiser().init(material=lc.Material().load('/home/ivan/LC/SM.json'),
+#                           experiment=lc.Experiment('/home/ivan/LC/Sm 17-1.dat'),
+#                           save_directory="/home/ivan/LC/SM/",
+#                           K1_list=0.0005 * np.linspace(0.1,10,10),
+#                           K2_list=0.0009 * np.linspace(0.1,10,3),
+#                           K3_list=0.00025 * np.linspace(0.1,10,10),
+#                           N=40)
+#
+LCD = lc.Minimiser().load_from_directory(material=lc.Material().load('/home/ivan/LC/SM.json'),
+                          experiment=lc.Experiment('/home/ivan/LC/Sm 17-1.dat'),
+                          save_directory="/home/ivan/LC/SM/",)
+
+# LCD = lc.Minimiser().init(material=lc.Material().load('/home/ivan/LC/EU.json'),
+#                           experiment=lc.Experiment('/home/ivan/LC/Eu 17-1.dat'),
+#                           save_directory="/home/ivan/LC/EU/",
+#                           K1_list=0.0005 * np.linspace(0.5,2,11),
+#                           K2_list=0.000454 * np.linspace(0.5,2,11),
+#                           K3_list=0.000126 * np.linspace(0.5,2,11),
+#                           N=40)
+
+# LCD = lc.Minimiser().load_from_directory(material=lc.Material().load('/home/ivan/LC/EU.json'),
+#                                          experiment=lc.Experiment('/home/ivan/LC/Eu 17-1.dat'),
+#                                          save_directory="/home/ivan/LC/EU/", )
+
+# LCD.field.minimize(nodes=8)
 
 print(f'{LCD = }')
 
-print(f'{LCD.field.nearest_perp([1e-05,4.7e-06,1.9e-05]) = }')
+# LCD.field.N=80
 
-print(f'{LCD.field.nearest_perp([9e-06,4.5e-06,1.8e-05]).lsr(experiment) = }')
+# LCD.field.minimize(nodes=8)
+#
+# print(f'{LCD = }')
 
-print(f'{LCD.field.best(experiment=experiment)}')
+# print(f'{LCD.field.nearest_perp([1e-05,4.7e-06,1.9e-05]) = }')
+
+# print(f'{LCD.field.nearest_perp([9e-06,4.5e-06,1.8e-05]).lsr(LCD.experiment) = }')
+
+print(f'{LCD.field.best(experiment=LCD.experiment)}')
 
 # LCD.field.best_perp(experiment=experiment).plot_eps(show=True)
 
-LCD.field.best_perp(experiment=experiment).plot(show=True)
-LCD.field.best_par(experiment=experiment).plot(show=True)
+LCD.field.best_perp(experiment=LCD.experiment).plot(show=True,
+                                                    save='/home/ivan/LC/' + LCD.material.state_name + '_perp.pdf')
+LCD.field.best_par(experiment=LCD.experiment).plot(show=True,
+                                                   save='/home/ivan/LC/' + LCD.material.state_name + '_par.pdf')
 
-print(f'{LCD.field.best_perp(experiment=experiment).nearest(H=5000).energy() = } Erg')
+print(f'{LCD.field.best_perp(experiment=LCD.experiment).nearest(H=5000).energy_n() = }')
+
+print(f'{LCD.field.best_perp(experiment=LCD.experiment).nearest(H=5000).energy() = } Erg')
 
 # LCD.plot(show=True, points=[...,...,...])
 
-LCD.plot_best(show=True)
+LCD.plot_best(show=True, save='/home/ivan/LC/' + LCD.material.state_name + '.pdf')
 
-# LCD.save()
+LCD.save()
 
 # LCD = lc.LcMinimiser(CB5)
 # LCD.plot_only_practics(show=True)
